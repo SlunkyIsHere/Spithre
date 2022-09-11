@@ -6,15 +6,16 @@ using Random = UnityEngine.Random;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public bool isSliding;
-    public bool isWallRunning;
-    public bool isClimbing;
-    public bool isFreezing;
-    public bool isUnlimited;
-    public bool isGrounded;
-    public bool isRestricted;
-    public bool isDashing;
-    public bool isActiveGrapple;
+    [HideInInspector] public bool isSliding;
+    [HideInInspector] public bool isWallRunning;
+    [HideInInspector] public bool isClimbing;
+    [HideInInspector] public bool isFreezing;
+    [HideInInspector] public bool isUnlimited;
+    [HideInInspector] public bool isGrounded;
+    [HideInInspector] public bool isRestricted;
+    [HideInInspector] public bool isDashing;
+    [HideInInspector] public bool isActiveGrapple;
+    [HideInInspector] public bool isSwinging;
 
     [SerializeField] private MovementState state;
     [SerializeField] private Transform orientation;
@@ -31,6 +32,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float airMinSpeed;
     [SerializeField] private float dashSpeed;
     [SerializeField] private float dashSpeedChangeFactor;
+    [SerializeField] private float swingMaxSpeed;
     public float maxYSpeed;
     public float _moveSpeed;
     private float _desireMoveSpeed;
@@ -87,6 +89,7 @@ public class PlayerMovement : MonoBehaviour
         Climbing,
         Sliding,
         WallRunning,
+        Swinging,
         Air
     }
 
@@ -146,6 +149,11 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.Walking;
             _desireMoveSpeed = walkSpeed;
+        }
+        else if (isSwinging)
+        {
+            state = MovementState.Swinging;
+            _desireMoveSpeed = swingMaxSpeed;
         }
         else
         {

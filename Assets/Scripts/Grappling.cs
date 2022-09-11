@@ -8,15 +8,16 @@ public class Grappling : MonoBehaviour
     [Header("References")] 
     private PlayerMovement pm;
     [SerializeField] private Transform cam;
-    [SerializeField] private Transform gunTip;
+    [SerializeField] public Transform gunTip;
     [SerializeField] private LayerMask whatIsGrappleable;
-    [SerializeField] private LineRenderer lr;
-
+    [SerializeField] private Transform orientation;
+    
     [Header("Swinging")] 
     [SerializeField] private float maxSwingDistance = 25f;
     [SerializeField] private float spring = 4.5f;
     [SerializeField] private float damper = 7f;
     [SerializeField] private float massScale = 4.5f;
+    [SerializeField] private bool isEnabledSwingWithForce = true;
     private SpringJoint joint;
     
 
@@ -32,21 +33,34 @@ public class Grappling : MonoBehaviour
 
     [Header("Input")] 
     [SerializeField] private KeyCode grappleKey = KeyCode.Mouse1;
-    [SerializeField] private KeyCode swingKey = KeyCode.Mouse2;
+    [SerializeField] private KeyCode swingKey = KeyCode.Mouse0;
+
+    [Header("WebMove")]
+    [SerializeField] private float horizontalThrustForce;
+    [SerializeField] private float forwardThrustForce;
+    [SerializeField] private float extendCableSpeed;
 
     private bool isGrappling;
+    private bool isTracking;
+    private bool isGrappleExecuted;
+    private Rigidbody rb;
 
     private void StartGrapple()
     {
         if (grapplingCoolDownTimer > 0) return;
 
+        grapplingCoolDownTimer = grapplingCoolDown;
+        
         isGrappling = true;
-
+        
         pm.isFreezing = true;
 
         RaycastHit hit;
         if (Physics.Raycast(cam.position, cam.forward, out hit, maxGrappleDistance, whatIsGrappleable))
         {
+            grappleObject = hit.transform;
+            isTracking = true;
+            
             grapplePoint = hit.point;
 
             Invoke(nameof(ExecuteGrapple), grappleDelayTime);
@@ -57,9 +71,6 @@ public class Grappling : MonoBehaviour
             
             Invoke(nameof(StopGrapple), grappleDelayTime);
         }
-
-        lr.enabled = true;
-        lr.SetPosition(1, grapplePoint);
     }
 
     private void ExecuteGrapple()
@@ -76,54 +87,133 @@ public class Grappling : MonoBehaviour
         pm.JumpToPosition(grapplePoint, highestPointOnArc);
         
         Invoke(nameof(StopGrapple), 1f);
+        isGrappleExecuted = true;
+    }
+
+    public void TryStopGrapple()
+    {
+        if (!isGrappleExecuted) return;
+        
+        StopGrapple();
     }
 
     public void StopGrapple()
     {
-        pm.isFreezing = false;
+        if (pm.isFreezing) pm.isFreezing = false;
         
         isGrappling = false;
-
-        grapplingCoolDownTimer = grapplingCoolDown;
-
-        lr.enabled = false;
+        isGrappleExecuted = false;
     }
 
+    public void OnObjectTouch()
+    {
+        if (isGrappleExecuted) StopGrapple();
+    }
+
+    private Transform grappleObject;
     private void StartSwing()
     {
-        
-    }
+        pm.isSwinging = true;
 
-    private void ExecuteSwing()
-    {
-        
+        RaycastHit hit;
+
+        if (Physics.Raycast(cam.position, cam.forward, out hit, maxSwingDistance, whatIsGrappleable))
+        {
+            grappleObject = hit.transform;
+            isTracking = true;
+
+            grapplePoint = hit.point;
+
+            joint = gameObject.AddComponent<SpringJoint>();
+            joint.autoConfigureConnectedAnchor = false;
+
+            joint.connectedAnchor = grapplePoint;
+
+            float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+            joint.maxDistance = distanceFromPoint * 0.8f;
+            joint.minDistance = distanceFromPoint * 0.25f;
+
+            joint.spring = spring;
+            joint.damper = damper;
+            joint.massScale = massScale;
+        }
     }
 
     public void StopSwing()
     {
+        pm.isSwinging = false;
+
+        isTracking = false;
+
+        Destroy(joint);
+    }
+
+    private void WebMovement()
+    {
+        if (Input.GetKey(KeyCode.D)) rb.AddForce(orientation.right * horizontalThrustForce * Time.deltaTime);
+        if (Input.GetKey(KeyCode.A)) rb.AddForce(-orientation.right * horizontalThrustForce * Time.deltaTime);
+        if (Input.GetKey(KeyCode.W))
+        {
+            Vector3 directionToPoint = grapplePoint - transform.position;
+            rb.AddForce(directionToPoint.normalized * forwardThrustForce * Time.deltaTime);
+
+            float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
+
+            joint.maxDistance = distanceFromPoint * 0.8f;
+            joint.minDistance = distanceFromPoint * 0.25f;
+        }
+
+        if (Input.GetKey(KeyCode.S))
+        {
+            float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint) + extendCableSpeed;
+            joint.maxDistance = distanceFromPoint * 0.8f;
+            joint.minDistance = distanceFromPoint * 0.25f;
+        }
+    }
+
+    public bool IsGrappling()
+    {
+        return joint != null || isGrappling;
+    }
+
+    public Vector3 GetGrapplePoint()
+    {
+        return grapplePoint;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.blue;
+        Vector3 direction = (grapplePoint - transform.position).normalized;
+        Gizmos.DrawRay(transform.position, direction * maxGrappleDistance);
+    }
+
+    private void MyInput()
+    {
+        if (Input.GetKeyDown(grappleKey)) StartGrapple();
+        if (Input.GetKeyUp(grappleKey)) TryStopGrapple();
         
+        if (Input.GetKeyDown(swingKey)) StartSwing();
+        if (Input.GetKeyUp(swingKey)) StopSwing();
     }
     
     private void Start()
     {
+        if (whatIsGrappleable == 0)
+            whatIsGrappleable = LayerMask.GetMask("Default");
+        
         pm = GetComponent<PlayerMovement>();
+        rb = GetComponent<Rigidbody>();
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(grappleKey)) StartGrapple();
-
-        if (Input.GetKeyDown(swingKey)) StartSwing();
-
         if (grapplingCoolDownTimer > 0)
             grapplingCoolDownTimer -= Time.deltaTime;
-    }
+        
+        MyInput();
 
-    private void LateUpdate()
-    {
-        if (isGrappling)
-        {
-            lr.SetPosition(0, gunTip.position);
-        }
+        if (isEnabledSwingWithForce && joint != null) WebMovement();
     }
 }
