@@ -25,7 +25,7 @@ public class GrapplingRope : MonoBehaviour
     private void Awake()
     {
         lr = GetComponent<LineRenderer>();
-        _spring = new Spring();
+        _spring = gameObject.AddComponent<Spring>();
         _spring.SetTarget(0);
     }
 
@@ -54,7 +54,7 @@ public class GrapplingRope : MonoBehaviour
         {
             _spring.SetVelocity(velocity);
 
-            lr.positionCount = quality - 1;
+            lr.positionCount = quality + 1;
         }
 
         _spring.SetDamper(damper);
@@ -68,12 +68,11 @@ public class GrapplingRope : MonoBehaviour
 
         currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
 
-        for (int i = 0; i < quality; i++)
+        for (int i = 0; i < quality + 1; i++)
         {
             float delta = i / (float) quality;
 
-            Vector3 offset = up * waveHeight * Mathf.Sin(delta * waveCount * Mathf.PI) * _spring.Value *
-                             affectCurve.Evaluate(delta);
+            Vector3 offset = up * (waveHeight * Mathf.Sin(delta * waveCount * Mathf.PI) * _spring.Value * affectCurve.Evaluate(delta));
             
             lr.SetPosition(i, Vector3.Lerp(gunTipPosition, currentGrapplePosition, delta) + offset);
         }

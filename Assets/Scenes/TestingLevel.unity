@@ -4617,6 +4617,7 @@ GameObject:
   - component: {fileID: 641856964}
   - component: {fileID: 641856963}
   - component: {fileID: 641856962}
+  - component: {fileID: 641856966}
   m_Layer: 0
   m_Name: WebSource
   m_TagString: Untagged
@@ -4802,6 +4803,50 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 641856960}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &641856966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 641856960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94bee18ca1b90a448b6f89ddb475b0a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _grappling: {fileID: 1527605461}
+  pm: {fileID: 1527605455}
+  quality: 200
+  damper: 14
+  strength: 800
+  velocity: 15
+  waveCount: 3
+  waveHeight: 1
+  affectCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!43 &645614082
 Mesh:
   m_ObjectHideFlags: 0
@@ -9330,6 +9375,7 @@ MonoBehaviour:
   isRestricted: 0
   isDashing: 0
   isActiveGrapple: 0
+  isSwinging: 0
   state: 0
   orientation: {fileID: 83261042}
   walkSpeed: 7
@@ -9343,6 +9389,7 @@ MonoBehaviour:
   airMinSpeed: 7
   dashSpeed: 20
   dashSpeedChangeFactor: 50
+  swingMaxSpeed: 17
   maxYSpeed: 0
   _moveSpeed: 0
   crouchSpeed: 3.5
@@ -9517,12 +9564,21 @@ MonoBehaviour:
   whatIsGrappleable:
     serializedVersion: 2
     m_Bits: 640
-  lr: {fileID: 641856962}
+  orientation: {fileID: 83261042}
+  maxSwingDistance: 25
+  spring: 4.5
+  damper: 7
+  massScale: 4.5
+  isEnabledSwingWithForce: 1
   maxGrappleDistance: 25
   grappleDelayTime: 0.1
   overshootYAxis: 2
   grapplingCoolDown: 1
   grappleKey: 324
+  swingKey: 323
+  horizontalThrustForce: 2000
+  forwardThrustForce: 5000
+  extendCableSpeed: 10
 --- !u!1 &1567728290
 GameObject:
   m_ObjectHideFlags: 0
