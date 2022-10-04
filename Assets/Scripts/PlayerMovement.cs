@@ -123,6 +123,7 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.WallRunning;
             _desireMoveSpeed = wallRunSpeed;
+            isKeepingMomentum = false;
         }
         else if (isSliding)
         {
@@ -253,6 +254,7 @@ public class PlayerMovement : MonoBehaviour
     private void MovePlayer()
     {
         if (isActiveGrapple) return;
+        if (isSwinging) return;
         if (state == MovementState.Dashing) return;
         if (climbing.isExitingWall) return;
         if (isRestricted) return;

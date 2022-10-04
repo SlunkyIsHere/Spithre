@@ -39,6 +39,11 @@ public class Grappling : MonoBehaviour
     [SerializeField] private float horizontalThrustForce;
     [SerializeField] private float forwardThrustForce;
     [SerializeField] private float extendCableSpeed;
+    
+    [Header("Prediction")]
+    public RaycastHit predictionHit;
+    public float predictionSphereCastRadius;
+    public Transform predictionPoint;
 
     private bool isGrappling;
     private bool isTracking;
@@ -48,6 +53,8 @@ public class Grappling : MonoBehaviour
     private void StartGrapple()
     {
         if (grapplingCoolDownTimer > 0) return;
+        
+        StopSwing();
 
         grapplingCoolDownTimer = grapplingCoolDown;
         
@@ -110,34 +117,61 @@ public class Grappling : MonoBehaviour
         if (isGrappleExecuted) StopGrapple();
     }
 
+    private void CheckForSwingPoints()
+    {
+        if (joint != null) return;
+
+        Physics.SphereCast(cam.position, predictionSphereCastRadius, cam.forward, out var sphereCastHit, 
+            maxSwingDistance, whatIsGrappleable);
+
+        Physics.Raycast(cam.position, cam.forward, out var raycastHit, 
+            maxSwingDistance, whatIsGrappleable);
+
+        Vector3 realHitPoint;
+
+        if (raycastHit.point != Vector3.zero)
+            realHitPoint = raycastHit.point;
+        else if (sphereCastHit.point != Vector3.zero)
+            realHitPoint = sphereCastHit.point;
+        else 
+            realHitPoint = Vector3.zero;
+
+        if (realHitPoint != Vector3.zero)
+        {
+            predictionPoint.gameObject.SetActive(true);
+            predictionPoint.position = realHitPoint;
+        } else
+        {
+            predictionPoint.gameObject.SetActive(false);
+        }
+
+        predictionHit = raycastHit.point == Vector3.zero ? sphereCastHit : raycastHit;
+    }
+    
     private Transform grappleObject;
     private void StartSwing()
     {
+        if (predictionHit.point == Vector3.zero) return;
+        
         pm.isSwinging = true;
+        
+        grapplePoint = predictionHit.point;
+        joint = gameObject.AddComponent<SpringJoint>();
+        joint.autoConfigureConnectedAnchor = false;
+        joint.connectedAnchor = grapplePoint;
 
-        RaycastHit hit;
+        grappleObject = predictionHit.transform;
+        isTracking = true;
 
-        if (Physics.Raycast(cam.position, cam.forward, out hit, maxSwingDistance, whatIsGrappleable))
-        {
-            grappleObject = hit.transform;
-            isTracking = true;
+        float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
 
-            grapplePoint = hit.point;
+        joint.maxDistance = distanceFromPoint * 0.8f;
+        joint.minDistance = distanceFromPoint * 0.25f;
 
-            joint = gameObject.AddComponent<SpringJoint>();
-            joint.autoConfigureConnectedAnchor = false;
-
-            joint.connectedAnchor = grapplePoint;
-
-            float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
-
-            joint.maxDistance = distanceFromPoint * 0.8f;
-            joint.minDistance = distanceFromPoint * 0.25f;
-
-            joint.spring = spring;
-            joint.damper = damper;
-            joint.massScale = massScale;
-        }
+        joint.spring = spring;
+        joint.damper = damper;
+        joint.massScale = massScale;
+        
     }
 
     public void StopSwing()
@@ -151,19 +185,19 @@ public class Grappling : MonoBehaviour
 
     private void WebMovement()
     {
-        if (Input.GetKey(KeyCode.D)) rb.AddForce(orientation.right * horizontalThrustForce * Time.deltaTime);
-        if (Input.GetKey(KeyCode.A)) rb.AddForce(-orientation.right * horizontalThrustForce * Time.deltaTime);
-        if (Input.GetKey(KeyCode.W))
+        if (Input.GetKey(KeyCode.D)) rb.AddForce(orientation.right * (horizontalThrustForce * Time.deltaTime));
+        if (Input.GetKey(KeyCode.A)) rb.AddForce(-orientation.right * (horizontalThrustForce * Time.deltaTime));
+        if (Input.GetKey(KeyCode.W)) rb.AddForce(orientation.forward * (forwardThrustForce * Time.deltaTime));
+        if (Input.GetKey(KeyCode.Space))
         {
             Vector3 directionToPoint = grapplePoint - transform.position;
-            rb.AddForce(directionToPoint.normalized * forwardThrustForce * Time.deltaTime);
+            rb.AddForce(directionToPoint.normalized * (forwardThrustForce * Time.deltaTime));
 
             float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint);
 
             joint.maxDistance = distanceFromPoint * 0.8f;
             joint.minDistance = distanceFromPoint * 0.25f;
         }
-
         if (Input.GetKey(KeyCode.S))
         {
             float distanceFromPoint = Vector3.Distance(transform.position, grapplePoint) + extendCableSpeed;
@@ -213,6 +247,8 @@ public class Grappling : MonoBehaviour
             grapplingCoolDownTimer -= Time.deltaTime;
         
         MyInput();
+        
+        CheckForSwingPoints();
 
         if (isEnabledSwingWithForce && joint != null) WebMovement();
     }
