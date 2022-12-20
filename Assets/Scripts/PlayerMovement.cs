@@ -11,8 +11,10 @@ public class PlayerMovement : MonoBehaviour
     [HideInInspector] public bool isClimbing;
     [HideInInspector] public bool isFreezing;
     [HideInInspector] public bool isUnlimited;
+    [HideInInspector] public bool isLimited;
     [HideInInspector] public bool isGrounded;
     [HideInInspector] public bool isRestricted;
+    [HideInInspector] private bool isTierTwoRestricted;
     [HideInInspector] public bool isDashing;
     [HideInInspector] public bool isActiveGrapple;
     [HideInInspector] public bool isSwinging;
@@ -33,6 +35,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float dashSpeed;
     [SerializeField] private float dashSpeedChangeFactor;
     [SerializeField] private float swingMaxSpeed;
+    [SerializeField] private float limitedMaxSpeed;
+
     public float maxYSpeed;
     public float _moveSpeed;
     private float _desireMoveSpeed;
@@ -82,6 +86,7 @@ public class PlayerMovement : MonoBehaviour
     {
         Freeze,
         Unlimited,
+        Limited,
         Walking,
         Sprinting,
         Crouching,
@@ -95,9 +100,12 @@ public class PlayerMovement : MonoBehaviour
 
     private void StateHandler()
     {
+        isKeepingMomentum = false;
+        bool hasInstantChange = false;
         if (isDashing)
         {
             state = MovementState.Dashing;
+            hasInstantChange = true;
             _desireMoveSpeed = dashSpeed;
             speedChangeFactor = dashSpeedChangeFactor;
         }
@@ -105,14 +113,18 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.Freeze;
             _rb.velocity = Vector3.zero;
-            //_desireMoveSpeed = 0f;
-            _moveSpeed = 7f;
+            hasInstantChange = true;
+            _desireMoveSpeed = 0f;
         }
         else if (isUnlimited)
         {
             state = MovementState.Unlimited;
             _desireMoveSpeed = 100f;
             return;
+        } else if (isLimited)
+        {
+            state = MovementState.Limited;
+            _desireMoveSpeed = limitedMaxSpeed;
         }
         else if (isClimbing)
         {
@@ -136,7 +148,7 @@ public class PlayerMovement : MonoBehaviour
             } else 
                 _desireMoveSpeed = sprintSpeed;
         }
-        else if (Input.GetKey(crouchKey))
+        else if (Input.GetKey(crouchKey) && isGrounded)
         {
             state = MovementState.Crouching;
             _desireMoveSpeed = crouchSpeed;
@@ -160,21 +172,21 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.Air;
 
-            if (_desireMoveSpeed < sprintSpeed)
-                _desireMoveSpeed = walkSpeed;
-            else
+            if (_desireMoveSpeed < walkSpeed)
                 _desireMoveSpeed = sprintSpeed;
+            else
+                _desireMoveSpeed = walkSpeed;
             
             if (_moveSpeed < airMinSpeed)
                 _desireMoveSpeed = airMinSpeed;
         }
 
         bool hasDesiredMoveSpeedChanged = _desireMoveSpeed != _lastDesiredMoveSpeed;
-        if (lastState == MovementState.Dashing) isKeepingMomentum = true;
+        bool boostedModes = lastState == MovementState.Dashing || lastState == MovementState.Sliding;
 
         if (hasDesiredMoveSpeedChanged)
         {
-            if (isKeepingMomentum)
+            if (isKeepingMomentum && _desireMoveSpeed > _moveSpeed || boostedModes && !hasInstantChange)
             {
                 StopAllCoroutines();
                 StartCoroutine(SmoothlyLerpMoveSpeed());
@@ -208,13 +220,13 @@ public class PlayerMovement : MonoBehaviour
             if (OnSlope())
             {
                 float slopeAngle = Vector3.Angle(Vector3.up, _slopeHit.normal);
-                float slopeAngleIncrease = 1 + (slopeAngle / 90f);
+                float slopeAngleIncrease = 1 + (slopeAngle / 90f) * 2f;
                 
-                time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease;
+                time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease * boostFactor;
             }
             else
             {
-                time += Time.deltaTime * boostFactor;
+                time += Time.deltaTime * speedIncreaseMultiplier * boostFactor;
             }
             
             yield return null;
@@ -239,7 +251,7 @@ public class PlayerMovement : MonoBehaviour
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
-        if (Input.GetKeyDown(crouchKey))
+        if (Input.GetKeyDown(crouchKey) && _horizontalInput == 0 && _verticalInput == 0)
         {
             transform.localScale = new Vector3(transform.localScale.x, crouchYscale, transform.localScale.z);
             _rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
@@ -257,7 +269,7 @@ public class PlayerMovement : MonoBehaviour
         if (isSwinging) return;
         if (state == MovementState.Dashing) return;
         if (climbing.isExitingWall) return;
-        if (isRestricted) return;
+        if (isRestricted || isTierTwoRestricted) return;
         //if (climbing.isExitingWall) return;
         
         _movementDirection = orientation.forward * _verticalInput + orientation.right * _horizontalInput;
@@ -304,7 +316,7 @@ public class PlayerMovement : MonoBehaviour
             _rb.velocity = new Vector3(limitedVel.x, _rb.velocity.y, limitedVel.z);
         }
 
-        if (maxYSpeed != 0 && _rb.velocity.y > maxYSpeed)
+        if (maxYSpeed != -1 && _rb.velocity.y > maxYSpeed)
             _rb.velocity = new Vector3(_rb.velocity.x, maxYSpeed, _rb.velocity.z);
     }
 
@@ -326,30 +338,61 @@ public class PlayerMovement : MonoBehaviour
 
     private bool enableMovementOnNexttouch;
 
-    public void JumpToPosition(Vector3 targetPosition, float trajectoryHeight)
+    public void JumpToPosition(Vector3 targetPosition, float trajectoryHeight, Vector3 startPosition = new Vector3(), float maxRestrictedTime = 1f)
     {
+        isTierTwoRestricted = true;
         isActiveGrapple = true;
+
+        if (startPosition == Vector3.zero) startPosition = transform.position;
         
-        velocityToSet = CalculateJumpVelocity(transform.position, targetPosition, trajectoryHeight);
-        Invoke(nameof(SetVelocity), 0.1f);
+        Vector3 velocity = CalculateJumpVelocity(transform.position, targetPosition, trajectoryHeight);
+
+        Vector3 flatVel = new Vector3(velocity.x, 0f, velocity.z);
+        EnableLimitedState(flatVel.magnitude);
+
+        velocityToSet = velocity;
         
-        Invoke(nameof(ResetRestriction), 3f);
+        Invoke(nameof(SetVelocity), 0.05f);
+        Invoke(nameof(EnableMovementNextTouchDelayed), 0.01f);
+        
+        Invoke(nameof(ResetRestriction), maxRestrictedTime);
     }
 
     private Vector3 velocityToSet;
     
     private void SetVelocity()
     {
-        enableMovementOnNexttouch = true;
         _rb.velocity = velocityToSet;
         
         cam.DoFov(grappleFOV);
     }
 
+    private void EnableMovementNextTouchDelayed()
+    {
+        enableMovementOnNexttouch = true;
+    }
+
+    private void EnableLimitedState(float speedLimit)
+    {
+        limitedMaxSpeed = speedLimit;
+        isLimited = true;
+    }
+
+    public void DisableLimitedState()
+    {
+        isLimited = false;
+    }
+
     public void ResetRestriction()
     {
-        isActiveGrapple = false;
-        cam.DoFov(85f);
+        if (isTierTwoRestricted)
+        {
+            isActiveGrapple = false;
+            isTierTwoRestricted = false;
+            cam.DoFov(85f);
+        }
+        
+        DisableLimitedState();
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -398,16 +441,27 @@ public class PlayerMovement : MonoBehaviour
         _rb.freezeRotation = true;
         _readyToJump = true;
 
+        maxYSpeed = -1;
+
         _startYScale = transform.localScale.y;
     }
     
     private void Update()
     {
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
-        
         MyInput();
         SpeedControl();
         StateHandler();
+        if (isRestricted)
+        {
+            print("I am restricted");
+        }
+
+        if (isTierTwoRestricted)
+        {
+            print("I am tier two restricted");
+        }
+        
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
 
         if ((state == MovementState.Walking || state == MovementState.Sprinting || state == MovementState.Crouching) && !isActiveGrapple)
             _rb.drag = groundDrag;
@@ -417,6 +471,9 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        MovePlayer();
+        if (state == MovementState.Walking || state == MovementState.Crouching || state == MovementState.Air)
+            MovePlayer();
+        else
+            SpeedControl();
     }
 }
