@@ -14,7 +14,7 @@ public class PlayerMovement : MonoBehaviour
     [HideInInspector] public bool isLimited;
     [HideInInspector] public bool isGrounded;
     [HideInInspector] public bool isRestricted;
-    [HideInInspector] private bool isTierTwoRestricted;
+    [HideInInspector] public bool isTierTwoRestricted;
     [HideInInspector] public bool isDashing;
     [HideInInspector] public bool isActiveGrapple;
     [HideInInspector] public bool isSwinging;
@@ -61,7 +61,7 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Keybinds")] 
     [SerializeField] private KeyCode jumpKey = KeyCode.Space;
-    [SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
+    //[SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
     [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
 
     [Header("Slope Handling")] 
@@ -152,11 +152,6 @@ public class PlayerMovement : MonoBehaviour
         {
             state = MovementState.Crouching;
             _desireMoveSpeed = crouchSpeed;
-        }
-        else if (isGrounded && Input.GetKey(sprintKey))
-        {
-            state = MovementState.Sprinting;
-            _desireMoveSpeed = sprintSpeed;
         }
         else if (isGrounded)
         {
@@ -322,11 +317,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void Jump()
     {
+        if (isDashing) return;
         _exitingSlope = true;
         
         _rb.velocity = new Vector3(_rb.velocity.x, 0.0f, _rb.velocity.z);
         
         _rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
+        print("Jumping");
     }
 
     private void ResetJump()
@@ -460,6 +457,9 @@ public class PlayerMovement : MonoBehaviour
         {
             print("I am tier two restricted");
         }
+        
+        if (state == MovementState.Dashing)
+            print("Dashing");
         
         isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
 
