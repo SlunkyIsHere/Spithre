@@ -14,7 +14,7 @@ public class Dashing : MonoBehaviour
     [Header("Dashing")]
     [SerializeField] private float dashForce;
     [SerializeField] private float dashUpwardForce;
-    [SerializeField] private float maxDashYSpeed;
+    [SerializeField] private float maxDashYSpeed = -1;
     [SerializeField] private float dashDuration;
 
     [Header("CameraEffects")] 
@@ -26,18 +26,30 @@ public class Dashing : MonoBehaviour
     [SerializeField] private bool allowAllDirection = true;
     [SerializeField] private bool disableGravity = false;
     [SerializeField] private bool resetVel = true;
+    [SerializeField] private bool resetYVel = true;
 
     [Header("Cooldown")] 
     [SerializeField] private float dashCoolDown;
     private float dashCoolDowntimer;
 
     [Header("Input")]
-    [SerializeField] private KeyCode dashKey = KeyCode.E;
+    [SerializeField] private KeyCode dashKey = KeyCode.LeftShift;
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         pm = GetComponent<PlayerMovement>();
+    }
+    
+    private void Update()
+    {
+        if (Input.GetKeyDown(dashKey))
+        {
+            Dash();
+        }
+
+        if (dashCoolDowntimer > 0)
+            dashCoolDowntimer -= Time.deltaTime;
     }
 
     private void Dash()
@@ -46,9 +58,15 @@ public class Dashing : MonoBehaviour
             return;
         dashCoolDowntimer = dashCoolDown;
 
-        pm.isDashing = true;
-        pm.maxYSpeed = maxDashYSpeed;
+        pm.ResetRestriction();
+
+        if (maxDashYSpeed == -1)
+            pm.maxYSpeed = -1;
+        else 
+            pm.maxYSpeed = maxDashYSpeed;
         
+        pm.isDashing = true;
+
         cam.DoFov(dashFov);
 
         Transform forwardT;
@@ -77,6 +95,8 @@ public class Dashing : MonoBehaviour
     {
         if (resetVel)
             rb.velocity = Vector3.zero;
+        else if (resetYVel)
+            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.y);
 
         rb.AddForce(delayedForceToApply, ForceMode.Impulse);
     }
@@ -108,16 +128,5 @@ public class Dashing : MonoBehaviour
             direction = forwardT.forward;
 
         return direction.normalized;
-    }
-    
-    private void Update()
-    {
-        if (Input.GetKeyDown(dashKey))
-        {
-            Dash();
-        }
-
-        if (dashCoolDowntimer > 0)
-            dashCoolDowntimer -= Time.deltaTime;
     }
 }

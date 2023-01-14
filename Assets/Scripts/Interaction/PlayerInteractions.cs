@@ -42,13 +42,13 @@ public class PlayerInteractions : MonoBehaviour
 
     private void Update()
     {
-        CheckForInteractions();
+        //CheckForInteractions();
 
-        if (Input.GetKeyDown(interactionKey))
+        if (Input.GetKeyDown(interactionKey) && CheckForInteractions())
             Interact();
     }
 
-    public void Interact()
+    private void Interact()
     {
         // first step
         if (moveableObject1 == null)
@@ -97,7 +97,7 @@ public class PlayerInteractions : MonoBehaviour
         //moveableObject1.AddForce(dirFrom2To1.normalized * moveForce);
     }
 
-    private void CheckForInteractions()
+    private bool CheckForInteractions()
     {
         RaycastHit hit;
         if (Physics.SphereCast(camT.position, interactionSpherecastRadius, camT.forward, out hit, interactionDistance, whatIsInteractable))
@@ -110,12 +110,19 @@ public class PlayerInteractions : MonoBehaviour
                 interactionPoint = hit.transform.position;
 
                 PlaceInteractionSign();
+                return true;
             }
             else
+            {
                 RemoveInteractionSign();
+                return false;
+            }
         }
         else
+        {
             RemoveInteractionSign();
+            return false;
+        }
     }
 
     #endregion
