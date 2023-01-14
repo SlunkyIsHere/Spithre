@@ -7,6 +7,7 @@ using Random = UnityEngine.Random;
 public class EnemyAI : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;
+    [SerializeField] private Rigidbody rb;
 
     [SerializeField] private Transform player;
     [SerializeField] private LayerMask whatIsGround, whatIsPlayer;
@@ -22,13 +23,11 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float sightRange, attackRange;
     [SerializeField] private bool isPlayerInSight, isPlayerInAttack;
 
-    [SerializeField] private float minJumpDistance = 1.5f;
-    [SerializeField] private float maxJumpDistance = 5f;
-    [SerializeField] private AnimationCurve heightCurve;
-    [SerializeField] private float jumpSpeed = 1f;
-    
+    [SerializeField] private float jumpForce = 10;
+
     private void Awake()
     {
+        rb = GetComponent<Rigidbody>();
         player = GameObject.Find("Player").transform;
         agent = GetComponent<NavMeshAgent>();
     }
@@ -79,19 +78,9 @@ public class EnemyAI : MonoBehaviour
 
         if (!_alreadyAttacked)
         {
-            float distance = Vector3.Distance(transform.position, player.position);
-            Vector3 startingPosition = transform.position;
-            if (distance >= maxJumpDistance && distance <= minJumpDistance)
-            {
-                for (float time = 0; time < 1; time += Time.deltaTime * jumpSpeed)
-                {
-                    transform.position = Vector3.Lerp(startingPosition, player.position, time) +
-                                         Vector3.up * heightCurve.Evaluate(time);
-                    transform.rotation = Quaternion.Slerp(transform.rotation,
-                        Quaternion.LookRotation(player.position - transform.position), time);
-                }
-            }
-            
+            Vector3 jumpDirection = (player.position - transform.position).normalized;
+            rb.AddForce(jumpDirection * jumpForce, ForceMode.Impulse);
+            print("Jump Attacking");
             _alreadyAttacked = true;
             Invoke(nameof(ResetAttack), timeBetweenAttacks);
         }
