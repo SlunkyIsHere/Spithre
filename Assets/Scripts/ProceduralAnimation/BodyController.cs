@@ -105,6 +105,7 @@ public class BodyController : MonoBehaviour
         targetPosition = targetPosition + Mathf.Clamp(velocity.magnitude * overStepMultiplier, 0, 2) *
             (legCubes[nextIndexToMove[0]].transform.position - legTargets[nextIndexToMove[0]].transform.position) +
              velocity * overStepMultiplier;
+        //Debug.Log(nextIndexToMove[0] + "Step()");
         StartCoroutine(step(nextIndexToMove[0], targetPosition,  false));
     }
 
@@ -141,6 +142,7 @@ public class BodyController : MonoBehaviour
         targetPosition = targetPosition + Mathf.Clamp(velocity.magnitude * overStepMultiplier, 0, 1.5f) *
             (legCubes[index].transform.position - legTargets[index].transform.position) +
              velocity * overStepMultiplier;
+        //Debug.Log(index + "MoveOppositeLeg()_Step()");
         StartCoroutine(step(index, targetPosition,  true));
     }
 

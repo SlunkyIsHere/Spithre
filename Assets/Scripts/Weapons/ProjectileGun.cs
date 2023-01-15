@@ -38,8 +38,8 @@ public class ProjectileGun : MonoBehaviour
     {
         MyInput();
 
-        if (ammunitionDisplay != null)
-            ammunitionDisplay.SetText(bulletsLeft / bulletPerTap + " / " + magazineSize / bulletPerTap);
+        // if (ammunitionDisplay != null)
+        //     ammunitionDisplay.SetText(bulletsLeft / bulletPerTap + " / " + magazineSize / bulletPerTap);
     }
     
     private void MyInput()

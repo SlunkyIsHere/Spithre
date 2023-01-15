@@ -16,6 +16,7 @@ public class Bullet : MonoBehaviour
 
     [SerializeField] private int explosionDamage;
     [SerializeField] private float explosionRange;
+    [SerializeField] private float explosionForce;
 
     [SerializeField] private int maxCollisions;
     [SerializeField] private float maxLifeTime;
@@ -39,12 +40,34 @@ public class Bullet : MonoBehaviour
 
     private void Explode()
     {
+        if (explosion != null) Instantiate(explosion, transform.position, Quaternion.identity);
+
+        Collider[] enemies = Physics.OverlapSphere(transform.position, explosionRange, whatIsEnemies);
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            enemies[i].GetComponent<EnemyAI>().TakeDamage(explosionDamage);
+
+            if (enemies[i].GetComponent<Rigidbody>())
+            {
+                enemies[i].GetComponent<Rigidbody>().AddExplosionForce(explosionForce, transform.position, explosionRange);
+            }
+        }
         
+        Invoke("Delay", 0.05f);
+    }
+
+    private void Delay()
+    {
+        Destroy(gameObject);
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        //if (collision.collider.CompareTag(""))
+        if (collision.collider.CompareTag("Bullet")) return;
+
+        collisions++;
+        
+        if (collision.collider.CompareTag("whatIsEnemy") && explodeOnTouch) Explode();
     }
 
     private void Setup()
@@ -57,5 +80,11 @@ public class Bullet : MonoBehaviour
         GetComponent<SphereCollider>().material = physocMaterial;
 
         rb.useGravity = useGravity;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, explosionRange);
     }
 }

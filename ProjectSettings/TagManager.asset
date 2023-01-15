@@ -5,22 +5,24 @@ TagManager:
   serializedVersion: 2
   tags:
   - Shootable
+  - Bullet
+  - whatIsEnemy
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - whatIsPlayer
   - Water
   - UI
-  - 
-  - 
+  - whatIsGround
+  - whatIsWall
+  - whatIsLedge
+  - whatIsGrappleable
+  - whatIsEnemy
   - Lighting
   - Ground
   - Postprocessing
-  - 
-  - 
-  - 
-  - 
+  - whatIsBullet
   - 
   - 
   - 
