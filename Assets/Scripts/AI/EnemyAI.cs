@@ -30,6 +30,7 @@ public class EnemyAI : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         player = GameObject.Find("Player").transform;
         agent = GetComponent<NavMeshAgent>();
+        agent.updateRotation = false;
     }
 
     private void Update()
