@@ -5,94 +5,117 @@ using UnityEngine;
 
 public class Dashing : MonoBehaviour
 {
-    [Header("References")] 
-    [SerializeField] private Transform orientaion;
-    [SerializeField] private Transform playerCam;
+    public Transform orientation; // the players orientation (where he's looking)
+    public Transform playerCam;
+
+    [Header("References")]
     private Rigidbody rb;
     private PlayerMovement pm;
-
-    [Header("Dashing")]
-    [SerializeField] private float dashForce;
-    [SerializeField] private float dashUpwardForce;
-    [SerializeField] private float maxDashYSpeed = -1;
-    [SerializeField] private float dashDuration;
-
-    [Header("CameraEffects")] 
-    [SerializeField] private MainCamera cam;
-    [SerializeField] private float dashFov;
+    private MainCamera cam;
 
     [Header("Settings")]
-    [SerializeField] private bool useCameraForward = true;
-    [SerializeField] private bool allowAllDirection = true;
-    [SerializeField] private bool disableGravity = false;
-    [SerializeField] private bool resetVel = true;
-    [SerializeField] private bool resetYVel = true;
+    // how much force is added when dashing forward
+    /// Note: the actual maxSpeed you can reach while dashing is defined in the PlayerMovement script
+    public float dashForce = 70f;
+    public float dashUpwardForce = 2f; // how much upward force is added when dashing
+    public float maxUpwardVel = -1; // limit the upwardVelocity if needed (if you keep it on -1, the upwardsVelocity is unlimited)
+    public float dashDuration = 0.4f;
 
-    [Header("Cooldown")] 
-    [SerializeField] private float dashCoolDown;
-    private float dashCoolDowntimer;
+    // here are a few settings to customize your dash
+
+    public bool useCameraForward = true;  // when active, the player dashes in the forward direction of the camera (upwards if you look up)
+    public bool allowForwardDirection = true; // defines if the player is allowed to dash forwards
+    public bool allowBackDirection = true; // defines if the player is allowed to dash backwards
+    public bool allowSidewaysDirection = true; // defines if the player is allowed to dash sideways
+    public bool disableGravity = false; // when active, gravity is disabled while dashing
+    public bool resetYVel = true; // when active, y velocity is resetted before dashing
+    public bool resetVel = true; // when active, full velocity reset before dashing
+
+    [Header("Effects")]
+    public float dashFov = 95f;
+
+    [Header("Cooldown")]
+    public float dashCd = 1.5f; // cooldown of your dash ability
+    private float dashCdTimer;
 
     [Header("Input")]
-    [SerializeField] private KeyCode dashKey = KeyCode.LeftShift;
+    public KeyCode dashKey = KeyCode.E;
+
 
     private void Start()
     {
+        // get all references
+
+        if(playerCam == null)
+            playerCam = Camera.main.transform;
+
         rb = GetComponent<Rigidbody>();
         pm = GetComponent<PlayerMovement>();
+        cam = GetComponent<MainCamera>();
     }
-    
+
     private void Update()
     {
+        // if you press the dash key -> call Dash() function
         if (Input.GetKeyDown(dashKey))
-        {
             Dash();
-        }
 
-        if (dashCoolDowntimer > 0)
-            dashCoolDowntimer -= Time.deltaTime;
+        // cooldown timer
+        if (dashCdTimer > 0)
+            dashCdTimer -= Time.deltaTime;
     }
 
     private void Dash()
     {
-        if (dashCoolDowntimer > 0) 
-            return;
-        dashCoolDowntimer = dashCoolDown;
+        // cooldown implementation
+        if (dashCdTimer > 0) return;
+        else dashCdTimer = dashCd;
 
-        pm.ResetRestriction();
+        pm.ResetRestrictions();
 
-        if (maxDashYSpeed == -1)
+        // if maxUpwardVel set to default (-1), don't limit the players upward velocity
+        if (maxUpwardVel == -1)
             pm.maxYSpeed = -1;
-        else 
-            pm.maxYSpeed = maxDashYSpeed;
-        
-        pm.isDashing = true;
 
-        cam.DoFov(dashFov);
+        else
+            pm.maxYSpeed = maxUpwardVel;
+
+        // this will cause the PlayerMovement script to change to MovementMode.dashing
+        pm.dashing = true;
+
+        // increase the fov of the camera (graphical effect)
+        cam.DoFov(dashFov, .2f);
 
         Transform forwardT;
 
+        // decide wheter you want to use the playerCam or the playersOrientation as forward direction
         if (useCameraForward)
             forwardT = playerCam;
         else
-            forwardT = orientaion;
+            forwardT = orientation;
 
+        // call the GetDirection() function below to calculate the direction
         Vector3 direction = GetDirection(forwardT);
 
-        Vector3 forceToApply = direction * dashForce + orientaion.up * dashUpwardForce;
+        // calculate the forward and upward force
+        Vector3 force = direction * dashForce + orientation.up * dashUpwardForce;
 
+        // disable gravity of the players rigidbody if needed
         if (disableGravity)
             rb.useGravity = false;
 
-        delayedForceToApply = forceToApply;
+        // add the dash force (deayed)
+        delayedForceToApply = force;
         Invoke(nameof(DelayedDashForce), 0.025f);
-        
+
+        // make sure the dash stops after the dashDuration is over
         Invoke(nameof(ResetDash), dashDuration);
     }
 
     private Vector3 delayedForceToApply;
-    
     private void DelayedDashForce()
     {
+        // reset velocity based on settings
         if (resetVel)
             rb.velocity = Vector3.zero;
         else if (resetYVel)
@@ -103,30 +126,62 @@ public class Dashing : MonoBehaviour
 
     private void ResetDash()
     {
-        pm.isDashing = false;
-        pm.maxYSpeed = 0;
-        
-        cam.DoFov(80f);
+        pm.dashing = false;
 
+        // make sure players maxYSpeed is no longer limited
+        pm.maxYSpeed = -1;
+
+        // reset the fov of your camera
+        cam.ResetFov();
+
+        // if you disabled it before, activate the gravity of the rigidbody again
         if (disableGravity)
             rb.useGravity = true;
     }
 
     private Vector3 GetDirection(Transform forwardT)
     {
-        float horizontalInput = Input.GetAxisRaw("Horizontal");
-        float verticalInput = Input.GetAxisRaw("Vertical");
+        // get the W,A,S,D input
+        float x = Input.GetAxisRaw("Horizontal");
+        float z = Input.GetAxisRaw("Vertical");
 
-        Vector3 direction = new Vector3();
+        // 2 Vector3 for the forward and right velocity
+        Vector3 forwardV = Vector3.zero;
+        Vector3 rightV = Vector3.zero;
 
-        if (allowAllDirection)
-            direction = forwardT.forward * verticalInput + forwardT.right * horizontalInput;
-        else
-            direction = forwardT.forward;
+        // forward
+        /// if W is pressed and you're allowed to dash forwards, activate the forwardVelocity
+        if (z > 0 && allowForwardDirection)
+            forwardV = forwardT.forward;
 
-        if (verticalInput == 0 && horizontalInput == 0)
-            direction = forwardT.forward;
+        // back
+        /// if S is pressed and you're allowed to dash backwards, activate the backwardVelocity
+        if (z < 0 && allowBackDirection)
+            forwardV = -forwardT.forward;
 
-        return direction.normalized;
+        // right
+        /// if D is pressed and you're allowed to dash sideways, activate the right velocity
+        if (x > 0 && allowSidewaysDirection)
+            rightV = forwardT.right;
+
+        // left
+        /// if A is pressed and you're allowed to dash sideways, activate the left velocity
+        if (x < 0 && allowSidewaysDirection)
+            rightV = -forwardT.right;
+
+        // no input (forward)
+        /// If there's no input but dashing forward is allowed, activate the forwardVelocity
+        if (x == 0 && z == 0 && allowForwardDirection)
+             forwardV = forwardT.forward;
+
+        // forward only allowed direction
+        /// if forward is the only allowed direction, activate the forwardVelocity
+        if (allowForwardDirection && !allowBackDirection && !allowSidewaysDirection)
+            forwardV = forwardT.forward;
+
+        // return the forward and right velocity
+        /// if for example both have been activated, the player will now dash forward and to the right -> diagonally
+        /// this works for all 8 directions
+        return (forwardV + rightV).normalized;
     }
 }

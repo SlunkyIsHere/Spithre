@@ -42,7 +42,7 @@ public class PlayerInteractions : MonoBehaviour
 
     private void Update()
     {
-        //CheckForInteractions();
+        CheckForInteractions();
 
         if (Input.GetKeyDown(interactionKey) && CheckForInteractions())
             Interact();

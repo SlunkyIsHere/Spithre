@@ -1,479 +1,740 @@
-using System;
-using System.Collections;
+ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using TMPro;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [HideInInspector] public bool isSliding;
-    [HideInInspector] public bool isWallRunning;
-    [HideInInspector] public bool isClimbing;
-    [HideInInspector] public bool isFreezing;
-    [HideInInspector] public bool isUnlimited;
-    [HideInInspector] public bool isLimited;
-    [HideInInspector] public bool isGrounded;
-    [HideInInspector] public bool isRestricted;
-    [HideInInspector] public bool isTierTwoRestricted;
-    [HideInInspector] public bool isDashing;
-    [HideInInspector] public bool isActiveGrapple;
-    [HideInInspector] public bool isSwinging;
+    public float playerHeight = 2f;
 
-    [SerializeField] private MovementState state;
-    [SerializeField] private Transform orientation;
+    /// this is an empty gameObject inside the player, it is rotated by the camera
+    /// -> keeps track of where the player is looking -> orientation.forward is the direction you're looking in
+    public Transform orientation; 
+
+    /// public Transform playerObj; // your player object with the collider on it
 
     [Header("Movement")]
-    [SerializeField] private float walkSpeed;
-    [SerializeField] private float sprintSpeed;
-    [SerializeField] private float groundDrag;
-    [SerializeField] private float slideSpeed;
-    [SerializeField] private float speedIncreaseMultiplier;
-    [SerializeField] private float slopeIncreaseMultiplier;
-    [SerializeField] private float wallRunSpeed;
-    [SerializeField] private float climbSpeed;
-    [SerializeField] private float airMinSpeed;
-    [SerializeField] private float dashSpeed;
-    [SerializeField] private float dashSpeedChangeFactor;
-    [SerializeField] private float swingMaxSpeed;
-    [SerializeField] private float limitedMaxSpeed;
+    public float moveForce = 12f;
+    /// how much air control you have
+    /// for example: airMultiplier = 0.5f -> you can only move half as fast will being in the air
+    public float airMultiplier = 0.4f;
 
-    public float maxYSpeed;
-    public float _moveSpeed;
-    private float _desireMoveSpeed;
-    private float _lastDesiredMoveSpeed;
-    private bool isKeepingMomentum;
-    private MovementState lastState;
+    public float groundDrag = 5f;
 
-    [Header("Crouching")] 
-    [SerializeField] private float crouchSpeed;
-    [SerializeField] private float crouchYscale;
-    private float _startYScale;
+    public float jumpForce = 13f;
+    public float jumpCooldown = 0.25f;
 
-    [Header("Jumping")]
-    [SerializeField] private float jumpForce;
-    [SerializeField] private float jumpCooldown;
-    [SerializeField] private float airMultiplier;
-    private bool _readyToJump;
-    
-    [Header("Ground Check")] 
-    [SerializeField] private float playerHeight;
-    [SerializeField] private LayerMask whatIsGround;
+    public float crouchYScale = 0.5f; // how tall your player is while crouching (0.5f -> half as tall as normal)
+    private float startYScale;
+    private bool crouchStarted;
 
-    [Header("Keybinds")] 
-    [SerializeField] private KeyCode jumpKey = KeyCode.Space;
-    //[SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
-    [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
+    [Header("Special Movement")]
+    public int doubleJumps = 1;
+    private int doubleJumpsLeft;
 
-    [Header("Slope Handling")] 
-    [SerializeField] private float maxSlopeAngle;
-    private RaycastHit _slopeHit;
-    private bool _exitingSlope;
+    [Header("Input")]
+    public KeyCode jumpKey = KeyCode.Space;
+    public KeyCode walkKey = KeyCode.LeftShift;
+    public KeyCode crouchKey = KeyCode.LeftControl;
+    private bool readyToJump = true;
 
-    [Header("Camera Effects")] 
-    [SerializeField] private MainCamera cam;
-    [SerializeField] private float grappleFOV = 95f;
+    [Header("Speed handling")]
+    // these variables define how fast your player can move while being in the specific movemt mode
+    public float walkMaxSpeed = 4f;
+    public float sprintMaxSpeed = 7f;
+    public float crouchMaxSpeed = 2f;
+    public float slopeSlideMaxSpeed = 30f;
+    public float wallJumpMaxSpeed = 12f;
+    public float climbMaxSpeed = 3f;
+    public float dashMaxSpeed = 15f;
+    public float swingMaxSpeed = 17f;
+    public float airMaxSpeed = 7f;
 
-    [Header("References")] 
-    [SerializeField] private Climbing climbing;
+    public float limitedMaxSpeed = 20f; // changes based on how fast the player needs to go
 
-    private float _horizontalInput;
-    private float _verticalInput;
-    
-    private Vector3 _movementDirection;
-    private Rigidbody _rb;
+    public float dashSpeedChangeFactor;
+    public float wallJumpSpeedChangeFactor;
 
-    private enum MovementState
+    private float maxSpeed; // this variable changes depending on which movement mode you are in
+    private float desiredMaxSpeed; // needed to smoothly change between speed limitations
+    private float lastDesiredMaxSpeed; // the previous desired max speed
+
+    public float speedIncreaseMultiplier = 1.5f; // how fast the maxSpeed changes
+    public float slopeIncreaseMultiplier = 2.5f; // how fast the maxSpeed changes on a slope
+
+    /// how fast your player can maximally move on the y axis
+    /// if set to -1, y speed will not be limited
+    [HideInInspector] public float maxYSpeed;
+
+    [Header("Ground Detection")]
+    public LayerMask whatIsGround;
+    public Transform groundCheck;
+    public float groundCheckRadius = 0.2f;
+    public float maxSlopeAngle = 40f; // how steep the slopes you walk on can be
+
+    [Header("Jump Prediction")]
+    // this is needed for precise jumping and walljumping
+    public float maxJumpRange;
+    public float maxJumpHeight;
+
+    [Header("References")]
+    // all script references are assigned in void Start
+    private MainCamera cam;
+    private WallRunning wr;
+
+    [Header("Movement Modes")] 
+    [HideInInspector] public MovementMode mm; // this variable stores the current movement mode of the player
+    public enum MovementMode // here are all movement modes defined
     {
-        Freeze,
-        Unlimited,
-        Limited,
-        Walking,
-        Sprinting,
-        Crouching,
-        Dashing,
-        Climbing,
-        Sliding,
-        WallRunning,
-        Swinging,
-        Air
-    }
+        unlimited, // players speed is not being limited at all
+        limited, // limit speed to a specific value using EnableLimitedSpeed()
+        freeze, // player can't move at all
+        dashing,
+        sliding,
+        crouching,
+        sprinting,
+        walking,
+        wallrunning,
+        walljumping,
+        climbing,
+        swinging,
+        air
+    };
 
-    private void StateHandler()
+    // these bools are activated from different scripts
+    // if for example the wallrunning bool is set to true, the movement mode will change to MovementMode.wallrunning#
+
+    [HideInInspector] public bool freeze;
+    [HideInInspector] public bool unlimitedSpeed;
+    [HideInInspector] public bool restricted;
+    [HideInInspector] private bool tierTwoRestricted;
+    [HideInInspector] public bool dashing;
+    [HideInInspector] public bool walking;
+    [HideInInspector] public bool wallrunning;
+    [HideInInspector] public bool walljumping;
+    [HideInInspector] public bool climbing;
+    [HideInInspector] public bool crouching;
+    [HideInInspector] public bool sliding;
+    [HideInInspector] public bool swinging;
+
+    // these bools are changed using specific functions
+    [HideInInspector] private bool limitedSpeed;
+
+    // other variables
+    [HideInInspector] public float horizontalInput;
+    [HideInInspector] public float verticalInput;
+
+    [HideInInspector] public bool grounded;
+
+    private Vector3 moveDirection;
+
+    private Rigidbody rb; // the players rigidbody
+
+    RaycastHit slopeHit; // variable needed for slopeCheck
+
+
+    // text variables needed to display the speed and movement state ingame
+
+    public TextMeshProUGUI text_speed;
+    public TextMeshProUGUI text_ySpeed;
+    public TextMeshProUGUI text_moveState;
+
+    private void Start()
     {
-        isKeepingMomentum = false;
-        bool hasInstantChange = false;
-        if (isDashing)
-        {
-            state = MovementState.Dashing;
-            hasInstantChange = true;
-            _desireMoveSpeed = dashSpeed;
-            speedChangeFactor = dashSpeedChangeFactor;
-        }
-        else if (isFreezing)
-        {
-            state = MovementState.Freeze;
-            _rb.velocity = Vector3.zero;
-            hasInstantChange = true;
-            _desireMoveSpeed = 0f;
-        }
-        else if (isUnlimited)
-        {
-            state = MovementState.Unlimited;
-            _desireMoveSpeed = 100f;
-            return;
-        } else if (isLimited)
-        {
-            state = MovementState.Limited;
-            _desireMoveSpeed = limitedMaxSpeed;
-        }
-        else if (isClimbing)
-        {
-            state = MovementState.Climbing;
-            _desireMoveSpeed = climbSpeed;
-        }
-        else if (isWallRunning)
-        {
-            state = MovementState.WallRunning;
-            _desireMoveSpeed = wallRunSpeed;
-            isKeepingMomentum = false;
-        }
-        else if (isSliding)
-        {
-            state = MovementState.Sliding;
+        // if the player has not yet assigned a groundMask, just set it to "Default"
+        if (whatIsGround.value == 0)
+            whatIsGround = LayerMask.GetMask("Default");
 
-            if (OnSlope() && _rb.velocity.y < 0.1f)
-            {
-                _desireMoveSpeed = slideSpeed;
-                isKeepingMomentum = true;
-            } else 
-                _desireMoveSpeed = sprintSpeed;
-        }
-        else if (Input.GetKey(crouchKey) && isGrounded)
-        {
-            state = MovementState.Crouching;
-            _desireMoveSpeed = crouchSpeed;
-        }
-        else if (isGrounded)
-        {
-            state = MovementState.Walking;
-            _desireMoveSpeed = walkSpeed;
-        }
-        else if (isSwinging)
-        {
-            state = MovementState.Swinging;
-            _desireMoveSpeed = swingMaxSpeed;
-        }
-        else
-        {
-            state = MovementState.Air;
+        // assign references
+        cam = GetComponent<MainCamera>();
+        wr = GetComponent<WallRunning>();
+        rb = GetComponent<Rigidbody>();
 
-            if (_desireMoveSpeed < walkSpeed)
-                _desireMoveSpeed = sprintSpeed;
-            else
-                _desireMoveSpeed = walkSpeed;
-            
-            if (_moveSpeed < airMinSpeed)
-                _desireMoveSpeed = airMinSpeed;
-        }
+        // freeze all rotation on the rigidbody, otherwise the player falls over
+        /// (like you would expect from a capsule with round surface)
+        rb.freezeRotation = true;
 
-        bool hasDesiredMoveSpeedChanged = _desireMoveSpeed != _lastDesiredMoveSpeed;
-        bool boostedModes = lastState == MovementState.Dashing || lastState == MovementState.Sliding;
+        // if maxYSpeed is set to -1, the y speed of the player will be unlimited
+        /// I only limit it while climbing or wallrunning
+        maxYSpeed = -1;
 
-        if (hasDesiredMoveSpeedChanged)
-        {
-            if (isKeepingMomentum && _desireMoveSpeed > _moveSpeed || boostedModes && !hasInstantChange)
-            {
-                StopAllCoroutines();
-                StartCoroutine(SmoothlyLerpMoveSpeed());
-            }
-            else
-            {
-                StopAllCoroutines();
-                _moveSpeed = _desireMoveSpeed;
-            }
-        }
+        startYScale = transform.localScale.y;
+
+        readyToJump = true;
         
-        _lastDesiredMoveSpeed = _desireMoveSpeed;
-        lastState = state;
-
-        if (Mathf.Abs(_desireMoveSpeed - _moveSpeed) < 0.1f) isKeepingMomentum = false;
+        // lock the mouse cursor in the middle of the screen
+        Cursor.lockState = CursorLockMode.Locked;
+        // make the mouse coursor invisible
+        Cursor.visible = false;
     }
 
-    private float speedChangeFactor;
-    private IEnumerator SmoothlyLerpMoveSpeed()
+    private void Update()
     {
-        float time = 0;
-        float difference = Mathf.Abs(_desireMoveSpeed - _moveSpeed);
-        float startValue = _moveSpeed;
+        print("slope" + OnSlope());
 
-        float boostFactor = speedChangeFactor;
+        // make sure to call all functions every frame
+        MyInput();
+        LimitVelocity();
+        HandleDrag();
+        StateHandler();
 
-        while (time < difference)
+        // shooting a raycast down from the middle of the player and checking if it hits the ground
+        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
+
+        // if you hit the ground again after double jumping, reset your double jumps
+        if (grounded && doubleJumpsLeft != doubleJumps)
+            ResetDoubleJumps();
+
+        if (Input.GetKeyDown(KeyCode.J))
         {
-            _moveSpeed = Mathf.Lerp(startValue, _desireMoveSpeed, time / difference);
-
-            if (OnSlope())
+            RaycastHit hit;
+            if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, 50f, whatIsGround))
             {
-                float slopeAngle = Vector3.Angle(Vector3.up, _slopeHit.normal);
-                float slopeAngleIncrease = 1 + (slopeAngle / 90f) * 2f;
-                
-                time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease * boostFactor;
+                JumpToPosition(hit.point, 10f);
+                print("trying to jump to " + hit.point);
             }
-            else
-            {
-                time += Time.deltaTime * speedIncreaseMultiplier * boostFactor;
-            }
-            
-            yield return null;
         }
 
-        _moveSpeed = _desireMoveSpeed;
-        speedChangeFactor = 1f;
-        isKeepingMomentum = false;
+        DebugText();
     }
-    
+
+    /// functions that directly move the player should be called in FixedUpdate()
+    /// this way your movement is not dependent on how many FPS you have
+    /// if you call it in void Update, a player with 120FPS could move twice as fast as someone with just 60FPS
+    private void FixedUpdate()
+    {
+        // if you're walking, sprinting, crouching or in the air, the MovePlayer function, which takes care of all basic movement, should be active
+        /// this also makes sure that you can't move left or right while dashing for example
+        if (mm == MovementMode.walking || mm == MovementMode.sprinting || mm == MovementMode.crouching || mm == MovementMode.air)
+            MovePlayer();
+
+        else
+            LimitVelocity();
+    }
+
+    #region Input, Movement & Velocity Limiting
+
     private void MyInput()
     {
-        _horizontalInput = Input.GetAxisRaw("Horizontal");
-        _verticalInput = Input.GetAxisRaw("Vertical");
+        // get your W,A,S,D inputs from your keyboard
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        verticalInput = Input.GetAxisRaw("Vertical");
 
-        if (Input.GetKey(jumpKey) && _readyToJump && isGrounded)
+        // whenever you press the jump key, you're grounded and readyToJump (which means jumping is not in cooldown),
+        // you want to call the Jump() function
+        if(Input.GetKey(jumpKey) && grounded && readyToJump)
         {
-            _readyToJump = false;
-            
+            readyToJump = false;
+
             Jump();
-            
+
+            // This will set readyToJump to true again after the cooldown is over
             Invoke(nameof(ResetJump), jumpCooldown);
         }
 
-        if (Input.GetKeyDown(crouchKey) && _horizontalInput == 0 && _verticalInput == 0)
+        // if you press the jump key while being in the air -> perform a double jump
+        else if(Input.GetKeyDown(jumpKey) && (mm == MovementMode.air || mm == MovementMode.walljumping))
         {
-            transform.localScale = new Vector3(transform.localScale.x, crouchYscale, transform.localScale.z);
-            _rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+            DoubleJump();
         }
 
-        if (Input.GetKeyUp(crouchKey))
-        {
-            transform.localScale = new Vector3(transform.localScale.x, _startYScale, transform.localScale.z);
-        }
+        // if you press the crouch key while not pressing W,A,S or D -> start crouching
+        /// Note: if you are pressing W,A,S or D, the sliding script will start a slide instead
+        if (Input.GetKeyDown(crouchKey) && horizontalInput == 0 && verticalInput == 0)
+            StartCrouch();
+
+        // uncrouch again when you release the crouch key
+        if (Input.GetKeyUp(crouchKey) && crouching)
+            StopCrouch();
+
+        // whenever you press the walk key, walking should be true
+        walking = Input.GetKey(walkKey);
     }
 
+    /// entire function only called when mm == walking, sprinting crouching or air
     private void MovePlayer()
     {
-        if (isActiveGrapple) return;
-        if (isSwinging) return;
-        if (state == MovementState.Dashing) return;
-        if (climbing.isExitingWall) return;
-        if (isRestricted || isTierTwoRestricted) return;
-        //if (climbing.isExitingWall) return;
-        
-        _movementDirection = orientation.forward * _verticalInput + orientation.right * _horizontalInput;
+        if (restricted || tierTwoRestricted) return;
 
-        if (OnSlope() && !_exitingSlope)
-        {
-            _rb.AddForce(GetSlopeMoveDirection(_movementDirection) * (_moveSpeed * 20f), ForceMode.Force);
+        // calculate the direction you need to move in
+        moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
-            if (_rb.velocity.y > 0)
-            {
-                _rb.AddForce(Vector3.down * 80f, ForceMode.Force);
-            }
-        }
-        else switch (isGrounded)
-        {
-            case true:
-                _rb.AddForce(_movementDirection.normalized * (_moveSpeed * 10f), ForceMode.Force);
-                break;
-            case false:
-                _rb.AddForce(_movementDirection.normalized * (_moveSpeed * 10f * airMultiplier), ForceMode.Force);
-                break;
-        }
+        // To Add the movement force, just use Rigidbody.AddForce (with ForceMode.Force, because you are adding force continuously)
 
-        if (!isWallRunning) _rb.useGravity = !OnSlope();
+        // movement on a slope
+        if (OnSlope())
+            rb.AddForce(GetSlopeMoveDirection(moveDirection) * moveForce * 7.5f, ForceMode.Force);
+
+        // movement on ground
+        else if(grounded)
+            rb.AddForce(moveDirection.normalized * moveForce * 10f, ForceMode.Force);
+
+        // movement in air
+        else if(!grounded)
+            rb.AddForce(moveDirection.normalized * moveForce * 10f * airMultiplier, ForceMode.Force);
     }
 
-    private void SpeedControl()
+    /// this function is always called
+    private void LimitVelocity()
     {
-        if (isActiveGrapple) return;
-        
-        if (OnSlope() && !_exitingSlope)
+        // get the velocity of your rigidbody without the y axis
+        Vector3 rbFlatVelocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+        float currYVel = rb.velocity.y;
+
+        // if you move faster over the x/z axis than you are allowed...
+        if (rbFlatVelocity.magnitude > maxSpeed)
         {
-            if (_rb.velocity.magnitude > _moveSpeed)
-            {
-                _rb.velocity = _rb.velocity.normalized * _moveSpeed;
-            }
+            // ...then first calculate what your maximal velocity would be
+            Vector3 limitedFlatVelocity = rbFlatVelocity.normalized * maxSpeed;
+
+            // and then apply this velocity to your rigidbody
+            rb.velocity = new Vector3(limitedFlatVelocity.x, rb.velocity.y, limitedFlatVelocity.z);
         }
+        
+        // if you move faster over the y axis than you are allowed...
+        if(maxYSpeed != -1 && currYVel > maxYSpeed)
+        {
+            // ...just set your rigidbodys y velocity to you maxYSpeed, while leaving the x and z axis untouched
+            rb.velocity = new Vector3(rb.velocity.x, maxYSpeed, rb.velocity.z);
+        }
+    }
+
+    /// function called the entire time
+    private void HandleDrag()
+    {
+        // if you're walking or sprinting, apply drag to your rigidbody in order to prevent slippery movement
+        if (mm == MovementMode.walking || mm == MovementMode.sprinting)
+            rb.drag = groundDrag;
+
+        // in any other case you don't want any drag
         else
-        {
-            Vector3 flatVel = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z);
-
-            if (!(flatVel.magnitude > _moveSpeed)) return;
-            Vector3 limitedVel = flatVel.normalized * _moveSpeed;
-            _rb.velocity = new Vector3(limitedVel.x, _rb.velocity.y, limitedVel.z);
-        }
-
-        if (maxYSpeed != -1 && _rb.velocity.y > maxYSpeed)
-            _rb.velocity = new Vector3(_rb.velocity.x, maxYSpeed, _rb.velocity.z);
+            rb.drag = 0;
     }
 
-    private void Jump()
+    #endregion
+
+    #region Jump Abilities
+
+    /// called when jumpKeyPressed, readyToJump and grounded
+    public void Jump()
     {
-        if (isDashing) return;
-        _exitingSlope = true;
-        
-        _rb.velocity = new Vector3(_rb.velocity.x, 0.0f, _rb.velocity.z);
-        
-        _rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
-        print("Jumping");
+        // while dashing you shouldn't be able to jump
+        if (dashing) return;
+
+        // reset the y velocity of your rigidbody, while leaving the x and z velocity untouched
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+        // add upward force to your rigidbody
+        /// make sure to use ForceMode.Impulse, since you're only adding force once
+        rb.AddForce(orientation.up * jumpForce, ForceMode.Impulse);
+    }
+
+    /// called when in air and jumpKey is pressed
+    public void DoubleJump()
+    {
+        // if you don't have any double jumps left, stop the function
+        if (doubleJumpsLeft <= 0) return;
+
+        /// this is just for bug-fixing
+        if (mm == MovementMode.wallrunning || mm == MovementMode.climbing) return;
+
+        // get rb velocity without y axis
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        // find out how large this velocity is
+        float flatVelMag = flatVel.magnitude;
+
+        Vector3 inputDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
+
+        // reset rb velocity in the correct direction while maintaing speed
+        /// for example, you're jumping forward, then in the air, you turn around and quickly jump back
+        /// you now want to take the speed you had in the forward direction and apply it to the backward direction
+        /// otherwise you would try to jump against your old forward speed
+        rb.velocity = inputDirection.normalized * flatVelMag;
+
+        // add jump force
+        /// make sure to use ForceMode.Impulse, since you're only adding force once
+        rb.AddForce(orientation.up * jumpForce, ForceMode.Impulse);
+
+        doubleJumpsLeft--;
     }
 
     private void ResetJump()
     {
-        _readyToJump = true;
-
-        _exitingSlope = false;
+        readyToJump = true;
     }
 
-    private bool enableMovementOnNexttouch;
+    public void ResetDoubleJumps()
+    {
+        doubleJumpsLeft = doubleJumps;
+    }
 
+    // Uses Vector Maths to make the player jump exactly to a desired position
     public void JumpToPosition(Vector3 targetPosition, float trajectoryHeight, Vector3 startPosition = new Vector3(), float maxRestrictedTime = 1f)
     {
-        isTierTwoRestricted = true;
-        isActiveGrapple = true;
+        tierTwoRestricted = true;
 
         if (startPosition == Vector3.zero) startPosition = transform.position;
-        
-        Vector3 velocity = CalculateJumpVelocity(transform.position, targetPosition, trajectoryHeight);
 
+        Vector3 velocity = PhysicsExtension.CalculateJumpVelocity(startPosition, targetPosition, trajectoryHeight);
+
+        // enter limited state
         Vector3 flatVel = new Vector3(velocity.x, 0f, velocity.z);
         EnableLimitedState(flatVel.magnitude);
 
         velocityToSet = velocity;
-        
         Invoke(nameof(SetVelocity), 0.05f);
         Invoke(nameof(EnableMovementNextTouchDelayed), 0.01f);
-        
-        Invoke(nameof(ResetRestriction), maxRestrictedTime);
-    }
 
+        Invoke(nameof(ResetRestrictions), maxRestrictedTime);
+    }
     private Vector3 velocityToSet;
-    
     private void SetVelocity()
     {
-        _rb.velocity = velocityToSet;
-        
-        cam.DoFov(grappleFOV);
+        rb.velocity = velocityToSet;
+        cam.DoFov(100f);
     }
-
     private void EnableMovementNextTouchDelayed()
     {
-        enableMovementOnNexttouch = true;
+        enableMovementOnNextTouch = true;
     }
 
-    private void EnableLimitedState(float speedLimit)
+    public void ResetRestrictions()
     {
-        limitedMaxSpeed = speedLimit;
-        isLimited = true;
-    }
-
-    public void DisableLimitedState()
-    {
-        isLimited = false;
-    }
-
-    public void ResetRestriction()
-    {
-        if (isTierTwoRestricted)
+        if (tierTwoRestricted)
         {
-            isActiveGrapple = false;
-            isTierTwoRestricted = false;
-            cam.DoFov(85f);
+            tierTwoRestricted = false;
+            cam.ResetFov();
         }
-        
+
         DisableLimitedState();
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (enableMovementOnNexttouch)
-        {
-            enableMovementOnNexttouch = false;
-            ResetRestriction();
+    #endregion
 
-            GetComponent<Grappling>().StopGrapple();
-        }
+    #region Crouching
+
+    /// called when crouchKey is pressed down
+    private void StartCrouch()
+    {
+        // shrink the player down
+        transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+
+        // after shrinking, you'll be a bit in the air, so add downward force to hit the ground again
+        /// you don't really notice this while playing
+        rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+
+        crouching = true;
     }
+
+    /// called when crouchKey is released
+    private void StopCrouch()
+    {
+        // make sure your players size is the same as before
+        transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+
+        crouching = false;
+    }
+
+    #endregion
+
+    #region StateMachine
+
+    // Now this is a giantic function I know, but don't worry, it's extremly simple
+    // Basically it just decides in which movement mode the player is currently in and sets the maxSpeed accordingly
+    // Also in a few states there needs to be done something extra (like in freeze), then I just added that code in there
+    MovementMode lastMovementMode;
+    private void StateHandler()
+    {
+        bool gradualVelBoost = false; // -> "build up speed", will make maxVel changes gradually (only if higher than current one!)
+        bool instantVelChange = false; // will change maxVel instantly, no matter what
+
+        // Mode - Freeze
+        if (freeze)
+        {
+            mm = MovementMode.freeze;
+            desiredMaxSpeed = 0f;
+            instantVelChange = true;
+
+            // make sure the player can't move at all
+            rb.velocity = Vector3.zero;
+        }
+
+        // Mode - Unlimited
+        else if (unlimitedSpeed)
+        {
+            mm = MovementMode.unlimited;
+
+            // this way the player can go as fast as he wants
+            desiredMaxSpeed = 1234.5678f;
+        }
+
+        // Mode - Limited
+        else if (limitedSpeed)
+        {
+            mm = MovementMode.limited;
+            desiredMaxSpeed = limitedMaxSpeed;
+        }
+
+        // Mode - Dashing
+        else if (dashing)
+        {
+            mm = MovementMode.dashing;
+            instantVelChange = true;
+            speedChangeFactor = dashSpeedChangeFactor;
+            desiredMaxSpeed = dashMaxSpeed;
+        }
+
+        // SubMode - WallJumping
+        else if (walljumping)
+        {
+            mm = MovementMode.walljumping;
+            instantVelChange = true;
+            speedChangeFactor = wallJumpSpeedChangeFactor;
+            desiredMaxSpeed = wallJumpMaxSpeed;
+        }
+
+        // Mode - Wallrunning
+        else if (wallrunning)
+        {
+            mm = MovementMode.wallrunning;
+            desiredMaxSpeed = sprintMaxSpeed;
+        }
+
+        // Mode - Climbing
+        else if (climbing)
+        {
+            mm = MovementMode.climbing;
+            desiredMaxSpeed = climbMaxSpeed;
+        }
+
+        // Mode - Sliding
+        else if (sliding)
+        {
+            mm = MovementMode.sliding;
+
+            if (OnSlope() && rb.velocity.y < 0.2f)
+            {
+                desiredMaxSpeed = slopeSlideMaxSpeed;
+                gradualVelBoost = true;
+            }
+            else
+                desiredMaxSpeed = sprintMaxSpeed;
+        }
+
+        // Mode - Crouching
+        else if (crouching && grounded)
+        {
+            mm = MovementMode.crouching;
+            desiredMaxSpeed = crouchMaxSpeed;
+        }
+
+        // Mode - Walk
+        else if (grounded && walking)
+        {
+            mm = MovementMode.walking;
+            desiredMaxSpeed = walkMaxSpeed;
+        }
+
+        // Mode - Sprint
+        else if (grounded)
+        {
+            mm = MovementMode.sprinting;
+            desiredMaxSpeed = sprintMaxSpeed;
+        }
+
+        // Mode - Swinging
+        else if (swinging)
+        {
+            mm = MovementMode.swinging;
+            desiredMaxSpeed = swingMaxSpeed;
+        }
+
+        // Mode - Air
+        else
+        {
+            mm = MovementMode.air;
+
+            if (desiredMaxSpeed < walkMaxSpeed)
+                desiredMaxSpeed = sprintMaxSpeed;
+
+            else
+                desiredMaxSpeed = walkMaxSpeed;
+        }
+
+        bool desiredMaxSpeedHasChanged = desiredMaxSpeed != lastDesiredMaxSpeed;
+        bool boostedModes = lastMovementMode == MovementMode.sliding || lastMovementMode == MovementMode.walljumping || lastMovementMode == MovementMode.dashing;
+
+        // Change maxSpeed gradually, always when slowing down, for speeding up only if specified above
+        if (desiredMaxSpeedHasChanged)
+        {
+            if ((gradualVelBoost && desiredMaxSpeed > maxSpeed) || boostedModes && !instantVelChange)
+            {
+                // check if desiredMoveSpeed has changed drastically
+                // Something not working here!! else statement get's called whenever the heck it wants
+                StopAllCoroutines();
+                StartCoroutine(SmoothlyLerpMaxSpeed());
+                print("chaning speed to " + desiredMaxSpeed + " last speed was " + lastDesiredMaxSpeed);
+            }
+
+            // In any other case change vel instantly
+            else
+            {
+                StopAllCoroutines();
+                maxSpeed = desiredMaxSpeed;
+                print("speed changed instantly to " + desiredMaxSpeed + " last speed was " + lastDesiredMaxSpeed);
+            }
+        }
+
+        lastDesiredMaxSpeed = desiredMaxSpeed;
+        lastMovementMode = lastMovementMode == mm ? lastMovementMode : mm;
+
+        // if you're walking or sprinting, the head bob movement of the camer should be enabled
+        cam.hbEnabled = mm == MovementMode.walking || mm == MovementMode.sprinting ? true : false;
+    }
+
+    float speedChangeFactor;
+    private IEnumerator SmoothlyLerpMaxSpeed()
+    {
+        // smoothly lerp movementSpeed to desired value
+        float time = 0;
+        float difference = Mathf.Abs(desiredMaxSpeed - maxSpeed);
+        float startValue = maxSpeed;
+
+        float boostFactor = 1f;
+        boostFactor = speedChangeFactor;
+
+        while (time < difference)
+        {
+            maxSpeed = Mathf.Lerp(startValue, desiredMaxSpeed, time / difference);
+
+            if (OnSlope())
+            {
+                float slopeAngle = Vector3.Angle(Vector3.up, slopeHit.normal);
+                float slopeAngleIncrease = 1 + (slopeAngle / 90f) * 2f;
+
+                time += Time.deltaTime * speedIncreaseMultiplier * slopeIncreaseMultiplier * slopeAngleIncrease * boostFactor;
+            }
+            else
+                time += Time.deltaTime * speedIncreaseMultiplier * boostFactor;
+
+            yield return null;
+        }
+
+        maxSpeed = desiredMaxSpeed;
+
+        // reset boost
+        speedChangeFactor = 1;
+    }
+
+    public void EnableLimitedState(float speedLimit)
+    {
+        limitedMaxSpeed = speedLimit;
+        limitedSpeed = true;
+    }
+    public void DisableLimitedState()
+    {
+        limitedSpeed = false;
+    }
+
+    #endregion
+
+    #region Variables
 
     public bool OnSlope()
     {
-        if (Physics.Raycast(transform.position, Vector3.down, out _slopeHit, playerHeight * 0.5f + 0.3f))
+        // shoot a raycast down to check if you hit something
+        /// the "out slopeHit" bit makes sure that you store the information of the object you hit
+        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, playerHeight * 0.5f + 0.5f))
         {
-            float angle = Vector3.Angle(Vector3.up, _slopeHit.normal);
+            // calculate the angle of the ground you're standing on (how steep it is)
+            float angle = Vector3.Angle(Vector3.up, slopeHit.normal);
+
+            // check if the angle is smaller than your maxSlopeAngle
+            /// -> that means you're standing on a slope -> return true
             return angle < maxSlopeAngle && angle != 0;
         }
 
+        // if the raycast doesn't hit anything, just return false
         return false;
     }
 
     public Vector3 GetSlopeMoveDirection(Vector3 direction)
     {
-        return Vector3.ProjectOnPlane(direction, _slopeHit.normal).normalized;
+        // calcualte the direction you need to move relative to the slope you're standing on
+        return Vector3.ProjectOnPlane(direction, slopeHit.normal).normalized;
     }
 
-    public Vector3 CalculateJumpVelocity(Vector3 startPoint, Vector3 endPoint, float trajectoryHeight)
+    #endregion
+
+    #region Moving Platforms
+
+    private Rigidbody movingPlatform;
+    public void AssignPlatform(Rigidbody platform)
     {
-        float gravity = Physics.gravity.y;
-        float displacementY = endPoint.y - startPoint.y;
-        Vector3 displacementXZ = new Vector3(endPoint.x - startPoint.x, 0f, endPoint.z - startPoint.z);
-
-        Vector3 velocityY = Vector3.up * Mathf.Sqrt(-2 * gravity * trajectoryHeight);
-        Vector3 velocityXZ = displacementXZ / (Mathf.Sqrt(-2 * trajectoryHeight / gravity) 
-                             + Mathf.Sqrt(2 * (displacementY - trajectoryHeight) / gravity));
-
-        return velocityXZ + velocityY;
+        movingPlatform = platform;
     }
-    
-    private void Start()
+    public void UnassignPlatform()
     {
-        _rb = GetComponent<Rigidbody>();
-        _rb.freezeRotation = true;
-        _readyToJump = true;
-
-        maxYSpeed = -1;
-
-        _startYScale = transform.localScale.y;
+        movingPlatform = null;
     }
-    
-    private void Update()
+
+    #endregion
+
+    #region Collision Detection
+
+    private bool enableMovementOnNextTouch;
+    private void OnCollisionEnter(Collision collision)
     {
-        MyInput();
-        SpeedControl();
-        StateHandler();
-        if (isRestricted)
+        bool touch = false;
+        print("Contact count" + collision.contactCount);
+        // Note: What is ground layer means Layer 7!
+        print("Contact Layer " + collision.collider.gameObject.layer + " / " + whatIsGround.value);
+        for (int i = 0; i < collision.contactCount; i++)
         {
-            print("I am restricted");
+            if (collision.collider.gameObject.layer == 9 || collision.collider.gameObject.layer == 10)
+                touch = true;
         }
 
-        if (isTierTwoRestricted)
+        if (touch) print("GroundObjectTouched");
+
+        // I don't know anymore lol
+        GetComponent<Grappling>().OnObjectTouch(); // this stops active grapples
+
+        print("event sucessfully called");
+
+        if (enableMovementOnNextTouch && touch)
         {
-            print("I am tier two restricted");
+            enableMovementOnNextTouch = false;
+            ResetRestrictions();
         }
-        
-        if (state == MovementState.Dashing)
-            print("Dashing");
-        
-        isGrounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
-
-        if ((state == MovementState.Walking || state == MovementState.Sprinting || state == MovementState.Crouching) && !isActiveGrapple)
-            _rb.drag = groundDrag;
-        else
-            _rb.drag = 0;
     }
 
-    private void FixedUpdate()
+    #endregion
+
+    #region Text Displaying
+
+    private void DebugText()
     {
-        if (state == MovementState.Walking || state == MovementState.Crouching || state == MovementState.Air)
-            MovePlayer();
-        else
-            SpeedControl();
+        if (text_speed != null)
+        {
+            Vector3 rbFlatVelocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+            text_speed.SetText("Speed: " + Round(rbFlatVelocity.magnitude, 1) + "/" + Round(maxSpeed,0));
+        }
+
+        if (text_ySpeed != null)
+            text_ySpeed.SetText("Y Speed: " + Round(rb.velocity.y, 1));
+
+        if (text_moveState != null)
+            text_moveState.SetText(mm.ToString());
     }
+
+    public static float Round(float value, int digits)
+    {
+        float mult = Mathf.Pow(10.0f, (float)digits);
+        return Mathf.Round(value * mult) / mult;
+    }
+
+    #endregion
 }

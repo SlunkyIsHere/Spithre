@@ -5,86 +5,154 @@ using UnityEngine;
 
 public class Sliding : MonoBehaviour
 {
-    [Header("References")] 
-    [SerializeField] private Transform orientation;
-    [SerializeField] private Transform playerObject;
-    private Rigidbody _rb;
-    private PlayerMovement _pm;
+    [Header("References")]
+    public Transform orientation; // orientation object inside the player
+    /// public Transform playerObj; // player Object with the blue capsule and collider on it
+    private Rigidbody rb;
+    private PlayerMovement pm; // script reference to the PlayerMovement script
 
-    [Header("Sliding")] 
-    [SerializeField] private float maxSlideTime;
-    [SerializeField] private float slideForce;
-    private float _slideTimer;
+    [Header("Sliding")]
+    public float minSlideTime = 0.2f;
+    public float maxSlideTime = 0.75f; // how long the slide maximally lasts
+    public float slideForce = 200f;
+    private float slideTimer;
+    public float slideCooldown = 0.5f;
 
-    [SerializeField] private float slideYScale;
-    private float _startYScale;
+    public float slideYScale = 0.5f; // how tall the playerObj is while sliding
+    private float startYScale;
 
-    [Header("Input")] 
-    [SerializeField] private KeyCode slideKey = KeyCode.LeftControl;
-    private float _horizontalInput;
-    private float _verticalInput;
+    private Vector3 startInputDirection;
 
-    private void StartSlide()
-    {
-        _pm.isSliding = true;
+    [Header("Input")]
+    public KeyCode slideKey = KeyCode.LeftControl;
+    private float horizontalInput;
+    private float verticalInput;
 
-        playerObject.localScale = new Vector3(playerObject.localScale.x, slideYScale, playerObject.localScale.z);
-        _rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
-
-        _slideTimer = maxSlideTime;
-    }
-    
-    private void SlidingMovement()
-    {
-        Vector3 inputDirection = orientation.forward * _verticalInput + orientation.right * _horizontalInput;
-
-        if (!_pm.OnSlope() || _rb.velocity.y > -0.1f)
-        {
-            _rb.AddForce(inputDirection.normalized * slideForce, ForceMode.Force);
-
-            _slideTimer -= Time.deltaTime;
-        }
-        else
-        {
-            _rb.AddForce(_pm.GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
-        }
-
-        if (_slideTimer <= 0)
-        {
-            StopSlide();
-        }
-    }
-
-    private void StopSlide()
-    {
-        _pm.isSliding = false;
-        
-        playerObject.localScale = new Vector3(playerObject.localScale.x, _startYScale, playerObject.localScale.z);
-    }
+    public bool allowSlideHoldDown;
+    private bool bufferSlide;
+    private bool readyToSlide = true;
+    private bool stopSlideAsap;
 
     private void Start()
     {
-        _rb = GetComponent<Rigidbody>();
-        _pm = GetComponent<PlayerMovement>();
+        // get references
+        rb = GetComponent<Rigidbody>();
+        pm = GetComponent<PlayerMovement>();
 
-        _startYScale = playerObject.localScale.y;
+        // save the normal scale of the player
+        startYScale = transform.localScale.y;
+
+        readyToSlide = true;
     }
 
     private void Update()
     {
-        _horizontalInput = Input.GetAxisRaw("Horizontal");
-        _verticalInput = Input.GetAxisRaw("Vertical");
-        
-        if (Input.GetKeyDown(slideKey) && (_horizontalInput != 0 || _verticalInput != 0))
+        // get the W,A,S,D keyboard inputs
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        verticalInput = Input.GetAxisRaw("Vertical");
+
+        // if you press down the slide key while moving -> StartSlide
+        if (Input.GetKeyDown(slideKey) && (horizontalInput != 0 || verticalInput != 0))
+        {
+            if (allowSlideHoldDown) bufferSlide = true;
+            else if (pm.grounded && readyToSlide) bufferSlide = true;
+        }
+
+        // if you release the slide key while sliding -> StopSlide
+        if (Input.GetKeyUp(slideKey))
+        {
+            if (allowSlideHoldDown) bufferSlide = false;
+
+            if (pm.sliding) stopSlideAsap = true;
+        }
+
+        // slide buffering
+        if (bufferSlide && pm.grounded && readyToSlide)
+        {
             StartSlide();
-        
-        if (Input.GetKeyUp(slideKey) && _pm.isSliding)
+            bufferSlide = false;
+        }
+
+        // unslide if slide key was released and minSlideTime exceeded
+        if (stopSlideAsap && maxSlideTime - slideTimer > minSlideTime)
+        {
+            stopSlideAsap = false;
+            StopSlide();
+        }
+
+        // unsliding if no longer grounded
+        if (pm.sliding && !pm.grounded)
             StopSlide();
     }
 
     private void FixedUpdate()
     {
-        if (_pm.isSliding)
-            SlidingMovement();
+        // make sure that sliding movement is continuously called while sliding
+        if (pm.sliding) SlidingMovement();
+    }
+
+    public void StartSlide()
+    {
+        if (!pm.grounded) return;
+
+        // this causes the player to change to MovementMode.sliding
+        pm.sliding = true;
+        readyToSlide = false;
+
+        // shrink the player down
+        transform.localScale = new Vector3(transform.localScale.x, slideYScale, transform.localScale.z);
+
+        // after shrinking, you'll be a bit in the air, so add downward force to hit the ground again
+        /// you don't really notice this while playing
+        rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+
+        // set the slideTimer
+        slideTimer = maxSlideTime;
+
+        // idk, feels weird but the idea would be ok I guess
+        // startInputDirection = orientation.forward * pm.verticalInput + orientation.right * pm.horizontalInput;
+    }
+
+    private void SlidingMovement()
+    {
+        // calculate the direction of your keyboard input relative to the players orientation (where the player is looking)
+        Vector3 inputDirection = Vector3.Normalize(orientation.forward * verticalInput + orientation.right * horizontalInput);
+
+        // Mode 1 - Sliding Normal
+        /// slide time is limited
+        if(!pm.OnSlope() || rb.velocity.y > -0.1f)
+        {
+            // add force in the direction of your keyboard input
+            rb.AddForce(inputDirection * slideForce, ForceMode.Force);
+
+            // count down timer
+            slideTimer -= Time.deltaTime;
+        }
+
+        // Mode 2 - Sliding down slopes
+        /// can slide for as long as the slope lasts
+        else
+        {
+            // add force in the direction of your keyboard input
+            rb.AddForce(pm.GetSlopeMoveDirection(inputDirection) * slideForce, ForceMode.Force);
+        }
+
+        // stop sliding again if the timer runs out
+        if (slideTimer <= 0) StopSlide();
+    }
+
+    public void StopSlide()
+    {
+        pm.sliding = false;
+
+        // reset the player scale back to normal again
+        transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
+
+        Invoke(nameof(ResetSlide), slideCooldown);
+    }
+
+    private void ResetSlide()
+    {
+        readyToSlide = true;
     }
 }

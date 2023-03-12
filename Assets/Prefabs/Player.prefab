@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2814386246950761255
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7691660758944274352}
+  m_Layer: 0
+  m_Name: GroundCheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7691660758944274352
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2814386246950761255}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4109238068824615779}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4109238066722453102
 GameObject:
   m_ObjectHideFlags: 0
@@ -213,7 +244,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94bee18ca1b90a448b6f89ddb475b0a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _grappling: {fileID: 4109238068824615803}
+  grappling: {fileID: 0}
   pm: {fileID: 4109238068824615777}
   quality: 200
   damper: 14
@@ -297,13 +328,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4109238067023294008}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4109238068824615779}
-  m_RootOrder: 2
+  m_Father: {fileID: 4109238067360946213}
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4109238067287995871
 GameObject:
@@ -328,7 +359,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4109238067287995871}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -366,7 +397,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 4109238067023294009}
   m_Father: {fileID: 4109238068824615779}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -496,7 +528,7 @@ Transform:
   m_Children:
   - {fileID: 4109238068670202189}
   m_Father: {fileID: 4109238068824615779}
-  m_RootOrder: 3
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4109238067738503534
 MonoBehaviour:
@@ -642,8 +674,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sensX: 1000
   sensY: 1000
+  camT: {fileID: 0}
+  cam: {fileID: 0}
   orientation: {fileID: 4109238067287995868}
-  camHolder: {fileID: 4109238067738503535}
+  baseFov: 90
+  fovTransitionTime: 0.25
+  tiltTransitionTime: 0.25
+  hbEnabled: 0
+  hbAmplitude: 0.5
+  hbFrequency: 12
+  mouseX: 0
+  mouseY: 0
 --- !u!1 &4109238068824615778
 GameObject:
   m_ObjectHideFlags: 0
@@ -658,10 +699,11 @@ GameObject:
   - component: {fileID: 4109238068824615777}
   - component: {fileID: 4109238068824615806}
   - component: {fileID: 4109238068824615807}
-  - component: {fileID: 4109238068824615804}
   - component: {fileID: 4109238068824615805}
   - component: {fileID: 4109238068824615802}
+  - component: {fileID: 107225186682888746}
   - component: {fileID: 4109238068824615803}
+  - component: {fileID: 7373730640487716275}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -683,8 +725,8 @@ Transform:
   m_Children:
   - {fileID: 4109238067360946213}
   - {fileID: 4109238067287995868}
-  - {fileID: 4109238067023294009}
   - {fileID: 4109238067738503535}
+  - {fileID: 7691660758944274352}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -740,50 +782,59 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bfccba719f4b8004daecd02301402cde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  isSliding: 0
-  isWallRunning: 0
-  isClimbing: 0
-  isFreezing: 0
-  isUnlimited: 0
-  isLimited: 0
-  isGrounded: 0
-  isRestricted: 0
-  isTierTwoRestricted: 0
-  isDashing: 0
-  isActiveGrapple: 0
-  isSwinging: 0
-  state: 0
+  playerHeight: 2
   orientation: {fileID: 4109238067287995868}
-  walkSpeed: 10
-  sprintSpeed: 10
+  moveForce: 12
+  airMultiplier: 0.4
   groundDrag: 4
-  slideSpeed: 30
-  speedIncreaseMultiplier: 1.5
-  slopeIncreaseMultiplier: 2.5
-  wallRunSpeed: 8.5
-  climbSpeed: 3
-  airMinSpeed: 7
-  dashSpeed: 20
-  dashSpeedChangeFactor: 50
-  swingMaxSpeed: 17
-  limitedMaxSpeed: 0
-  maxYSpeed: 0
-  _moveSpeed: 0
-  crouchSpeed: 3.5
-  crouchYscale: 0.5
   jumpForce: 10
   jumpCooldown: 0.25
-  airMultiplier: 0.4
-  playerHeight: 2
+  crouchYScale: 0.5
+  doubleJumps: 1
+  jumpKey: 32
+  walkKey: 304
+  crouchKey: 99
+  walkMaxSpeed: 4
+  sprintMaxSpeed: 7
+  crouchMaxSpeed: 2
+  slopeSlideMaxSpeed: 30
+  wallJumpMaxSpeed: 12
+  climbMaxSpeed: 3
+  dashMaxSpeed: 15
+  swingMaxSpeed: 17
+  airMaxSpeed: 7
+  limitedMaxSpeed: 0
+  dashSpeedChangeFactor: 50
+  wallJumpSpeedChangeFactor: 0
+  speedIncreaseMultiplier: 1.5
+  slopeIncreaseMultiplier: 2.5
+  maxYSpeed: 0
   whatIsGround:
     serializedVersion: 2
     m_Bits: 64
-  jumpKey: 32
-  crouchKey: 99
+  groundCheck: {fileID: 0}
+  groundCheckRadius: 0.2
   maxSlopeAngle: 45
-  cam: {fileID: 4109238068670202186}
-  grappleFOV: 95
-  climbing: {fileID: 4109238068824615804}
+  maxJumpRange: 0
+  maxJumpHeight: 0
+  mm: 0
+  freeze: 0
+  unlimitedSpeed: 0
+  restricted: 0
+  dashing: 0
+  walking: 0
+  wallrunning: 0
+  walljumping: 0
+  climbing: 0
+  crouching: 0
+  sliding: 0
+  swinging: 0
+  horizontalInput: 0
+  verticalInput: 0
+  grounded: 0
+  text_speed: {fileID: 0}
+  text_ySpeed: {fileID: 0}
+  text_moveState: {fileID: 0}
 --- !u!114 &4109238068824615806
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -797,11 +848,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   orientation: {fileID: 4109238067287995868}
-  playerObject: {fileID: 4109238067360946213}
+  minSlideTime: 0.2
   maxSlideTime: 0.75
   slideForce: 200
+  slideCooldown: 0.5
   slideYScale: 0.5
   slideKey: 306
+  allowSlideHoldDown: 0
 --- !u!114 &4109238068824615807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -814,6 +867,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df5090fbb67d30840bd661b1438e95f8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  EnablePrecisionMode: 1
+  orientation: {fileID: 4109238067287995868}
   whatIsWall:
     serializedVersion: 2
     m_Bits: 192
@@ -821,52 +876,43 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   wallRunForce: 200
-  wallJumpUpForce: 7
   wallJumpSideForce: 12
-  wallClimbSpeed: 3
+  wallJumpUpForce: 7
+  pushToWallForce: 100
   maxWallRunTime: 22
-  jumpKey: 32
-  upwardsRunKey: 304
-  downwardsRunKey: 306
-  wallCheckDistance: 0.7
-  minJumpHeight: 2
-  exitWallTime: 1
+  wallrunClimbSpeed: 0
+  wallJumpDuration: 0.5
   useGravity: 1
   gravityCounterForce: 10
-  orientation: {fileID: 4109238067287995868}
-  cam: {fileID: 4109238068670202186}
-  lg: {fileID: 4109238068824615805}
---- !u!114 &4109238068824615804
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4109238068824615778}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d3de2c3c639a2a429ae67ef25afee2f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  orientation: {fileID: 4109238067287995868}
-  rb: {fileID: 4109238068824615776}
-  pm: {fileID: 4109238068824615777}
-  lg: {fileID: 4109238068824615805}
-  whatIsWall:
-    serializedVersion: 2
-    m_Bits: 128
-  climbSpeed: 10
-  maxClimbTime: 1.5
-  climbJumpUpForce: 14
-  climbJumbBackForce: 12
-  jumpKey: 32
-  climbJumps: 1
-  detectionLength: 0.7
-  sphereCastRadius: 0.25
+  climbForce: 200
+  climbJumpUpForce: 15
+  climbJumpBackForce: 15
+  maxClimbYSpeed: 5
+  maxClimbTime: 0.75
   maxWallLookAngle: 30
-  minWallNormalAngleChange: 5
-  isExitingWall: 0
-  exitWalTime: 0.2
+  minFrontWallAngle: 80
+  backWallJumpUpForce: 5
+  backWallJumpForwardForce: 12
+  doJumpOnEndOfTimer: 0
+  resetDoubleJumpsOnNewWall: 1
+  resetDoubleJumpsOnEveryWall: 0
+  allowedWallJumps: 1
+  allowedClimbJumps: 1
+  wallJumpKey: 32
+  upwardsRunKey: 304
+  downwardsRunKey: 306
+  minWallNormalAngleChange: 15
+  customGravity: 0
+  vaultDetectionLength: 0
+  topReached: 0
+  maxVaultClimbYSpeed: 0
+  vaultJumpForwardForce: 0
+  vaultJumpUpForce: 0
+  vaultCooldown: 0
+  wallFront: 0
+  wallBack: 0
+  ledgegrabbing: 0
+  text_wallState: {fileID: 0}
 --- !u!114 &4109238068824615805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -879,23 +925,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 593059a4287bd414aa0249e1ea607a11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pm: {fileID: 4109238068824615777}
   orientation: {fileID: 4109238067287995868}
   cam: {fileID: 4109238068670202189}
-  rb: {fileID: 4109238068824615776}
+  jumpKey: 32
   moveToLedgeSpeed: 12
+  ledgeJumpForwardForce: 14
+  ledgeJumpUpForce: 0
+  maxLedgeJumpUpSpeed: 0
   maxLedgeGrabDistance: 2
   minTimeOnLedge: 3
-  isHolding: 0
-  jumpKey: 32
-  ledgeJumpForwardForce: 14
-  ledgeJumpUpwardForce: 5
   ledgeDetectionLength: 3
   ledgeSphereCastRadius: 0.5
   whatIsLedge:
     serializedVersion: 2
     m_Bits: 256
-  isExitingLedge: 0
+  currLedge: {fileID: 0}
+  exitingLedge: 0
   exitLedgeTime: 0.2
 --- !u!114 &4109238068824615802
 MonoBehaviour:
@@ -909,21 +954,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 152cd22729967ab4ca83fc6688203348, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  orientaion: {fileID: 4109238067287995868}
+  orientation: {fileID: 4109238067287995868}
   playerCam: {fileID: 4109238068670202189}
   dashForce: 20
   dashUpwardForce: 0
-  maxDashYSpeed: 15
+  maxUpwardVel: -1
   dashDuration: 0.25
-  cam: {fileID: 4109238068670202186}
-  dashFov: 95
   useCameraForward: 1
-  allowAllDirection: 1
+  allowForwardDirection: 1
+  allowBackDirection: 1
+  allowSidewaysDirection: 1
   disableGravity: 1
-  resetVel: 1
   resetYVel: 1
-  dashCoolDown: 1.5
+  resetVel: 1
+  dashFov: 95
+  dashCd: 1.5
   dashKey: 304
+--- !u!114 &107225186682888746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4109238068824615778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26eb05cfc134077408909c0f4e6ea9d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sensX: 10
+  sensY: 10
+  camT: {fileID: 4109238067738503535}
+  cam: {fileID: 4109238068670202184}
+  orientation: {fileID: 4109238067287995868}
+  baseFov: 90
+  fovTransitionTime: 0.25
+  tiltTransitionTime: 0.25
+  hbEnabled: 0
+  hbAmplitude: 0.5
+  hbFrequency: 12
+  mouseX: 0
+  mouseY: 0
 --- !u!114 &4109238068824615803
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -936,25 +1007,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a42b63ba0cd6e0d47b2ccf9c2ded3db1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cam: {fileID: 4109238068670202189}
-  gunTip: {fileID: 4109238067703872840}
+  EnableSwingingWithForces: 1
+  grappleMode: 1
+  orientation: {fileID: 4109238067287995868}
   whatIsGrappleable:
     serializedVersion: 2
     m_Bits: 704
-  orientation: {fileID: 4109238067287995868}
+  gunTip: {fileID: 4109238067703872840}
+  cam: {fileID: 4109238068670202189}
   maxSwingDistance: 25
   spring: 4.5
   damper: 7
   massScale: 4.5
-  isEnabledSwingWithForce: 1
   maxGrappleDistance: 25
   grappleDelayTime: 0.05
+  grappleForce: 20
+  grappleUpwardForce: 5
+  grappleDistanceMultiplier: 0.1
+  grapplingCd: 2.5
   overshootYAxis: 1
-  grapplingCoolDown: 1
-  grappleKey: 324
   swingKey: 325
+  grappleKey: 324
   horizontalThrustForce: 2000
   forwardThrustForce: 5000
   extendCableSpeed: 10
-  predictionSphereCastRadius: 0
-  predictionPoint: {fileID: 0}
+--- !u!114 &7373730640487716275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4109238068824615778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86c8426bb2955de439719afd2bc21bea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShowMarkerSphere: 0
+  pm: {fileID: 4109238068824615777}
+  camT: {fileID: 4109238068670202189}
+  camHolder: {fileID: 4109238067738503535}
+  whatIsGround:
+    serializedVersion: 2
+    m_Bits: 64
+  precisionTargetFound: 0
+  precisionTargetIsWall: 0
+  debuggingEnabled: 0
+  renderer_markerSphere: {fileID: 0}
+  markerSphere: {fileID: 0}
+  someSecondSphere: {fileID: 0}
+  text_predictionState: {fileID: 0}

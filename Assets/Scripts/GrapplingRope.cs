@@ -5,75 +5,85 @@ using UnityEngine;
 
 public class GrapplingRope : MonoBehaviour
 {
-    [Header("References")] 
-    [SerializeField] private Grappling _grappling;
-    [SerializeField] private PlayerMovement pm;
+    [Header("References")]
+    public Grappling grappling;
+    public PlayerMovement pm;
 
     [Header("Settings")]
-    [SerializeField] private int quality = 200;
-    [SerializeField] private float damper = 14;
-    [SerializeField] private float strength = 800;
-    [SerializeField] private float velocity = 15;
-    [SerializeField] private float waveCount = 3;
-    [SerializeField] private float waveHeight = 1;
-    [SerializeField] private AnimationCurve affectCurve;
+    public int quality = 200; // how many segments the rope will be split up in
+    public float damper = 14; // this slows the simulation down, so that not the entire rope is affected the same
+    public float strength = 800; // how hard the simulation tries to get to the target point
+    public float velocity = 15; // velocity of the animation
+    public float waveCount = 3; // how many waves are being simulated
+    public float waveHeight = 1;
+    public AnimationCurve affectCurve;
 
-    private Spring _spring;
+    private Spring spring; // a custom script that returns the values needed for the animation
     private LineRenderer lr;
     private Vector3 currentGrapplePosition;
 
     private void Awake()
     {
+        // get references
         lr = GetComponent<LineRenderer>();
-        _spring = gameObject.AddComponent<Spring>();
-        _spring.SetTarget(0);
+        spring = gameObject.AddComponent<Spring>();
+        spring.SetTarget(0);
     }
 
+    //Called after Update
     private void LateUpdate()
     {
         DrawRope();
     }
 
-    private void DrawRope()
+    void DrawRope()
     {
-        if (!_grappling.IsGrappling())
+        // if not grappling, don't draw rope
+        if (!grappling.IsGrappling())
         {
-            currentGrapplePosition = _grappling.gunTip.position;
+            currentGrapplePosition = grappling.gunTip.position;
 
-            _spring.Reset();
+            // reset the simulation
+            spring.Reset();
 
+            // reset the positionCount of the lineRenderer
             if (lr.positionCount > 0)
-            {
                 lr.positionCount = 0;
-            }
-            
+
             return;
         }
 
-        if (lr.positionCount == 0)
+        if(lr.positionCount == 0)
         {
-            _spring.SetVelocity(velocity);
+            // set the start velocity of the simulation
+            spring.SetVelocity(velocity);
 
+            // set the positionCount of the lineRenderer depending on the quality of the rope
             lr.positionCount = quality + 1;
         }
 
-        _spring.SetDamper(damper);
-        _spring.SetStrength(strength);
-        _spring.MyUpdate(Time.deltaTime);
+        // set the spring simulation
+        spring.SetDamper(damper);
+        spring.SetStrength(strength);
+        spring.MyUpdate(Time.deltaTime);
 
-        Vector3 grapplePoint = _grappling.GetGrapplePoint();
-        Vector3 gunTipPosition = _grappling.gunTip.position;
+        Vector3 grapplePoint = grappling.GetGrapplePoint();
+        Vector3 gunTipPosition = grappling.gunTip.position;
 
+        // find the upwards direction relative to the rope
         Vector3 up = Quaternion.LookRotation((grapplePoint - gunTipPosition).normalized) * Vector3.up;
 
+        // lerp the currentGrapplePositin towards the grapplePoint
         currentGrapplePosition = Vector3.Lerp(currentGrapplePosition, grapplePoint, Time.deltaTime * 8f);
 
+        // loop through all segments of the rope and animate them
         for (int i = 0; i < quality + 1; i++)
         {
-            float delta = i / (float) quality;
+            float delta = i / (float)quality;
+            // calculate the offset of the current rope segment
+            Vector3 offset = up * waveHeight * Mathf.Sin(delta * waveCount * Mathf.PI) * spring.Value * affectCurve.Evaluate(delta);
 
-            Vector3 offset = up * (waveHeight * Mathf.Sin(delta * waveCount * Mathf.PI) * _spring.Value * affectCurve.Evaluate(delta));
-            
+            // lerp the lineRenderer position towards the currentGrapplePosition + the offset you just calculated
             lr.SetPosition(i, Vector3.Lerp(gunTipPosition, currentGrapplePosition, delta) + offset);
         }
     }
