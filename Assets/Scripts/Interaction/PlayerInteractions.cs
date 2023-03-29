@@ -17,7 +17,7 @@ public class PlayerInteractions : MonoBehaviour
     public float moveForce;
 
     [Header("Graphics")]
-    public GameObject interactionSign;
+    //public GameObject interactionSign;
     public Material mat_notSelected;
     public Material mat_selected;
 
@@ -48,14 +48,14 @@ public class PlayerInteractions : MonoBehaviour
             Interact();
     }
 
-    private void Interact()
+    public void Interact()
     {
         // first step
         if (moveableObject1 == null)
         {
             moveableObject1 = interactableT.GetComponent<MoveableObject>();
             isFirstInteraction = false;
-            print("stored interaction info 1");
+            //print("stored interaction info 1");
         }
 
         // second step
@@ -63,7 +63,7 @@ public class PlayerInteractions : MonoBehaviour
         {
             moveableObject2 = interactableT.GetComponent<MoveableObject>();
             isFirstInteraction = true;
-            print("stored interaction info 2");
+            //print("stored interaction info 2");
 
             MoveObjects();
         }
@@ -97,7 +97,7 @@ public class PlayerInteractions : MonoBehaviour
         //moveableObject1.AddForce(dirFrom2To1.normalized * moveForce);
     }
 
-    private bool CheckForInteractions()
+    public bool CheckForInteractions()
     {
         RaycastHit hit;
         if (Physics.SphereCast(camT.position, interactionSpherecastRadius, camT.forward, out hit, interactionDistance, whatIsInteractable))
@@ -112,17 +112,13 @@ public class PlayerInteractions : MonoBehaviour
                 PlaceInteractionSign();
                 return true;
             }
-            else
-            {
-                RemoveInteractionSign();
-                return false;
-            }
-        }
-        else
-        {
+
             RemoveInteractionSign();
             return false;
         }
+
+        RemoveInteractionSign();
+        return false;
     }
 
     #endregion
@@ -133,7 +129,7 @@ public class PlayerInteractions : MonoBehaviour
     public void PlaceInteractionSign()
     {
         if (currInteractable != null) currInteractable.SetMaterial(mat_selected);
-        interactionSign.SetActive(true);
+        //interactionSign.SetActive(true);
     }
 
     public Action RemoveSelectedMaterials;
@@ -141,7 +137,7 @@ public class PlayerInteractions : MonoBehaviour
     public void RemoveInteractionSign()
     {
         if (RemoveSelectedMaterials != null) RemoveSelectedMaterials();
-        interactionSign.SetActive(false);
+        //interactionSign.SetActive(false);
         currInteractable = null;
     }
 

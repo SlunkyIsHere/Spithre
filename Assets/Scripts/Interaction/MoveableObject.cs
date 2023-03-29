@@ -26,7 +26,7 @@ public class MoveableObject : MonoBehaviour, IInteractable
     {
         Vector3 dirToStickPoint = stickPoint - transform.position;
 
-        rb.AddForce(dirToStickPoint.normalized * force * Time.deltaTime);
+        rb.AddForce(dirToStickPoint.normalized * (force * Time.deltaTime));
     }
 
     public void AddStickPoint(Vector3 point, float _force)
@@ -37,11 +37,13 @@ public class MoveableObject : MonoBehaviour, IInteractable
 
     public void SetMaterial(Material material)
     {
-        GetComponent<MeshRenderer>().material = material;
+        if (rb != null)
+            GetComponent<MeshRenderer>().material = material;
     }
 
     public void ResetMaterial()
     {
-        GetComponent<MeshRenderer>().material = interactions.mat_notSelected;
+        if (rb != null)
+            GetComponent<MeshRenderer>().material = interactions.mat_notSelected;
     }
 }
