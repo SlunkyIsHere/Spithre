@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using Weapons;
 
 public class RaycastGun : MonoBehaviour
 {
@@ -10,18 +11,23 @@ public class RaycastGun : MonoBehaviour
     [SerializeField] private float range = 100f;
     [SerializeField] private float impactForce = 30f;
     [SerializeField] private float fireRate = 15f;
+    [SerializeField] private float recoilAmount = 1f;
+    [SerializeField] private float bulletHoleTime = 10f;
 
     [SerializeField] private int magazineSize = 10;
     private int bulletsLeft;
     [SerializeField] private float reloadTime = 1f;
     private bool _isReloading;
 
+    [SerializeField] private MainCamera cameraScript;
     [SerializeField] private Camera cam;
     [SerializeField] private ParticleSystem muzzleFlash;
     [SerializeField] private GameObject impactEffect;
+    [SerializeField] private GameObject bulletHole;
+    [SerializeField] private LayerMask canBeShot;
     
     [SerializeField] private TextMeshProUGUI ammunitionDisplay;
-
+    private RecoilController recoilController;
     
     [HideInInspector]
     public bool isReadyToShoot = true;
@@ -30,10 +36,11 @@ public class RaycastGun : MonoBehaviour
 
     [SerializeField] private Animator animator;
     private static readonly int Reloading = Animator.StringToHash("Reloading");
-
+    
     private void Start()
     {
         bulletsLeft = magazineSize;
+        recoilController = FindObjectOfType<RecoilController>();
     }
 
     private void OnEnable()
@@ -55,8 +62,14 @@ public class RaycastGun : MonoBehaviour
         
         if (Input.GetKey(KeyCode.Mouse0) && isReadyToShoot && Time.time >= _nextTimeToFire)
         {
+            cameraScript.SetShootingStatus(true);
             _nextTimeToFire = Time.time + 1f / fireRate;
             Shoot();
+        }
+
+        if (Input.GetKeyUp(KeyCode.Mouse0))
+        {
+            cameraScript.SetShootingStatus(false);
         }
         
         if (ammunitionDisplay != null)
@@ -87,7 +100,9 @@ public class RaycastGun : MonoBehaviour
 
         bulletsLeft--;
         
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, range))
+        recoilController.ApplyRecoil();
+        
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, range, canBeShot))
         {
             Target target = hit.transform.GetComponent<Target>();
             if (target != null)
@@ -100,6 +115,9 @@ public class RaycastGun : MonoBehaviour
                 hit.rigidbody.AddForce(-hit.normal * impactForce);
             }
 
+            GameObject tNewHole = Instantiate(bulletHole, hit.point + hit.normal * 0.001f, Quaternion.identity);
+            tNewHole.transform.LookAt(hit.point + hit.normal);
+            Destroy(tNewHole, bulletHoleTime);
             GameObject impactGameObject = Instantiate(impactEffect, hit.point, Quaternion.LookRotation(hit.normal));
             Destroy(impactGameObject, 2f);
         }

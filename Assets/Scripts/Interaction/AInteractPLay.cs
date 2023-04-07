@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AInteractPLay : MonoBehaviour
+public class AInteractPlay : MonoBehaviour
 {
     private Camera _cam;
     [SerializeField] private float distance = 3f;
