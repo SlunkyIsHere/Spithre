@@ -37,6 +37,7 @@ public class MainCamera : MonoBehaviour
     private float yRotation;
     
     private bool isShooting = false;
+    private PauseMenu pauseMenu;
 
     private void Start()
     {
@@ -44,6 +45,7 @@ public class MainCamera : MonoBehaviour
 
         camT = GameObject.Find("CameraObj").transform;
         rb = GetComponent<Rigidbody>();
+        pauseMenu = FindObjectOfType<PauseMenu>();
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -51,12 +53,13 @@ public class MainCamera : MonoBehaviour
 
     private void Update()
     {
-        RotateCamera();
+        if (!pauseMenu.IsPaused)
+            RotateCamera();
         
         if (hbEnabled && !isShooting)
         {
-            CheckMotion();
-            cam.transform.LookAt(FocusTarget());
+            /*CheckMotion();
+            cam.transform.LookAt(FocusTarget());*/
         }
     }
     

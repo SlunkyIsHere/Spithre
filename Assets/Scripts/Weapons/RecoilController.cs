@@ -34,7 +34,6 @@ namespace Weapons
 
         void Update()
         {
-            Debug.Log(playerCam.localRotation);
             playerCam.localRotation = Quaternion.Slerp(playerCam.localRotation,
                 Quaternion.Euler(originalRotation + currentRecoil), Time.deltaTime * recoilSpeed);
             currentRecoil = Vector3.Lerp(currentRecoil, Vector3.zero, Time.deltaTime * returnSpeed);
