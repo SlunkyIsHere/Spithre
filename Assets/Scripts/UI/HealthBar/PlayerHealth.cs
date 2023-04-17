@@ -4,8 +4,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : MonoBehaviour, IDamagable
 {
+    public GameObject player;
+    
     private float health;
     private float lerpTimer;
     [Header("Health Bar")]
@@ -55,7 +57,7 @@ public class PlayerHealth : MonoBehaviour
 
     public void UpdateHealthUI()
     {
-        Debug.Log(health);
+        //Debug.Log(health);
         float fillF = frontHealthBar.fillAmount;
         float fillB = removeHealthBar.fillAmount;
         float hFraction = health / maxHealth;
@@ -88,6 +90,11 @@ public class PlayerHealth : MonoBehaviour
         lerpTimer = 0f;
         durationTimer = 0;
         overlay.color = new Color(overlay.color.r, overlay.color.g, overlay.color.b, 1);
+    }
+
+    public Transform GetTransform()
+    {
+        return player.transform;
     }
 
     public void RestoreHealth(float healAmount)
