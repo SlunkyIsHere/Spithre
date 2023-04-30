@@ -5,7 +5,7 @@ public class ObjectPool
 {
     private PoolableObject Prefab;
     private int Size;
-    private List<PoolableObject> AvailableObjectsPool;
+    public List<PoolableObject> AvailableObjectsPool;
 
     private ObjectPool(PoolableObject Prefab, int Size)
     {
@@ -30,16 +30,19 @@ public class ObjectPool
         {
             PoolableObject poolableObject = GameObject.Instantiate(Prefab, Vector3.zero, Quaternion.identity, parent.transform);
             poolableObject.Parent = this;
-            poolableObject.gameObject.SetActive(false); // PoolableObject handles re-adding the object to the AvailableObjects
+            poolableObject.gameObject.SetActive(false);
         }
     }
 
     public PoolableObject GetObject()
     {
+        if (AvailableObjectsPool.Count == 0)
+        {
+            return null;
+        }
+
         PoolableObject instance = AvailableObjectsPool[0];
-
         AvailableObjectsPool.RemoveAt(0);
-
         instance.gameObject.SetActive(true);
 
         return instance;

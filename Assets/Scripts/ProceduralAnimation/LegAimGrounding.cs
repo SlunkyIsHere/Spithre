@@ -9,7 +9,7 @@ public class LegAimGrounding : MonoBehaviour
     void Start()
     {
         layerMask = LayerMask.GetMask("whatIsGround");
-        raycastOrigin = transform.parent.gameObject;
+        raycastOrigin = transform.gameObject;
     }
 
     void Update()

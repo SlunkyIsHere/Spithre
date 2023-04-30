@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class SpiderProceduralAnimation : MonoBehaviour
 {
@@ -21,6 +22,7 @@ public class SpiderProceduralAnimation : MonoBehaviour
     private Vector3 lastVelocity;
     private Vector3 lastBodyPos;
 
+    public NavMeshAgent agent;
     private float velocityMultiplier = 15f;
 
     static Vector3[] MatchToSurfaceFromAbove(Vector3 point, float halfRange, Vector3 up)
@@ -61,10 +63,12 @@ public class SpiderProceduralAnimation : MonoBehaviour
     IEnumerator PerformStep(int index, Vector3 targetPoint)
     {
         Vector3 startPos = lastLegPositions[index];
+        int currentSmoothness = Mathf.Max(1, Mathf.FloorToInt(smoothness * (agent.speed / 4.0f)));
+
         for(int i = 1; i <= smoothness; ++i)
         {
-            legTargets[index].position = Vector3.Lerp(startPos, targetPoint, i / (float)(smoothness + 1f));
-            legTargets[index].position += transform.up * Mathf.Sin(i / (float)(smoothness + 1f) * Mathf.PI) * stepHeight;
+            legTargets[index].position = Vector3.Lerp(startPos, targetPoint, i / (float)(currentSmoothness + 1f));
+            legTargets[index].position += transform.up * Mathf.Sin(i / (float)(currentSmoothness + 1f) * Mathf.PI) * stepHeight;
             yield return new WaitForFixedUpdate();
         }
         legTargets[index].position = targetPoint;
@@ -76,7 +80,8 @@ public class SpiderProceduralAnimation : MonoBehaviour
     void FixedUpdate()
     {
         velocity = transform.position - lastBodyPos;
-        velocity = (velocity + smoothness * lastVelocity) / (smoothness + 1f);
+        int currentSmoothness = Mathf.Max(1, Mathf.FloorToInt(smoothness * (agent.speed / 4.0f)));
+        velocity = (velocity + currentSmoothness * lastVelocity) / (currentSmoothness + 1f);
 
         if (velocity.magnitude < 0.000025f)
             velocity = lastVelocity;

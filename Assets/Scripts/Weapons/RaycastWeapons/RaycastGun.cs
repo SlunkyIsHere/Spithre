@@ -104,7 +104,7 @@ public class RaycastGun : MonoBehaviour
         
         if (Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, range, canBeShot))
         {
-            Target target = hit.transform.GetComponent<Target>();
+            Enemy target = hit.transform.GetComponent<Enemy>();
             if (target != null)
             {
                 target.TakeDamage(damage);

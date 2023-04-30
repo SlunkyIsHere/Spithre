@@ -12,14 +12,13 @@ public class Enemy : PoolableObject, IDamagable
    public Animator animator;
    public float health = 100;
    public bool isPooled = false;
-   public EnemyScriptableObject EnemyScriptableObject;
    
    private Coroutine LookCoroutine;
    private const string ATTACK_TRIGGER = "Attack";
 
    private void Awake()
    {
-      agent = GetComponent<NavMeshAgent>();
+      //agent = GetComponent<NavMeshAgent>();
       attackRadius.OnAttack += OnAttack;
    }
    
@@ -36,29 +35,36 @@ public class Enemy : PoolableObject, IDamagable
    
    private IEnumerator LookAt(Transform target)
    {
-      Quaternion lookRotation = Quaternion.LookRotation(target.position - transform.position);
-      
-      float time = 0;
-
-      while (time < 1)
+      while (true)
       {
-         transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, time);
-         time += Time.deltaTime * 2;
-         yield return null;
+         if (movement.State == EnemyState.Chase)
+         {
+            Vector3 targetPosition = new Vector3(target.position.x, transform.position.y, target.position.z);
+
+            Quaternion lookRotation = Quaternion.LookRotation(targetPosition - transform.position);
+
+            float time = 0;
+
+            while (time < 1)
+            {
+               transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, time);
+               time += Time.deltaTime * 2;
+               yield return null;
+            }
+
+            transform.rotation = lookRotation;
+         }
+
+         yield return new WaitForSeconds(0.1f);
       }
-      
-      transform.rotation = lookRotation;
    }
 
    private void Start()
    {
-      if (!isPooled)
-         movement.StartChasing();
-   }
+      movement.Spawn();
 
-   public void OnEnable()
-   {
-      SetupAgentFromConfiguration();
+      if (!isPooled && movement.ChaseOnStart)
+         movement.StartChasing();
    }
 
    public override void OnDisable()
@@ -67,28 +73,6 @@ public class Enemy : PoolableObject, IDamagable
 
       if (agent != null && isPooled)
          agent.enabled = false;
-   }
-
-   public virtual void SetupAgentFromConfiguration()
-   {
-      agent.speed = EnemyScriptableObject.Speed;
-      agent.angularSpeed = EnemyScriptableObject.AngularSpeed;
-      agent.acceleration = EnemyScriptableObject.Acceleration;
-      agent.areaMask = EnemyScriptableObject.AreaMask;
-      agent.avoidancePriority = EnemyScriptableObject.AvoidancePriority;
-      agent.stoppingDistance = EnemyScriptableObject.StoppingDistance;
-      agent.radius = EnemyScriptableObject.Radius;
-      agent.height = EnemyScriptableObject.Height;
-      agent.baseOffset = EnemyScriptableObject.BaseOffset;
-      agent.obstacleAvoidanceType = EnemyScriptableObject.ObstacleAvoidanceType;
-      
-      movement.UpdateSpeed = EnemyScriptableObject.AIUpdateInterval;
-      
-      health = EnemyScriptableObject.Health;
-      
-      attackRadius.Collider.radius = EnemyScriptableObject.AttackRadius;
-      attackRadius.Damage = EnemyScriptableObject.Damage;
-      attackRadius.AttackDelay = EnemyScriptableObject.AttackDelay;
    }
 
    public void TakeDamage(float damage)

@@ -10,7 +10,7 @@ public class EnemySpawner : MonoBehaviour
     public Transform player;
     public int numberOfEnemiesToSpawn = 5;
     public float spawnDelay = 1f;
-    public List<Enemy> EnemyPrefabs = new List<Enemy>();
+    public List<EnemyScriptableObject> Enemies = new List<EnemyScriptableObject>();
     public SpawnMethod spawnMethod = SpawnMethod.RoundRobin;
 
     private NavMeshTriangulation _triangulation;
@@ -18,9 +18,9 @@ public class EnemySpawner : MonoBehaviour
 
     private void Awake()
     {
-        for (int i = 0; i < EnemyPrefabs.Count; i++)
+        for (int i = 0; i < Enemies.Count; i++)
         {
-            EnemyObjectPools.Add(i, ObjectPool.CreateInstance(EnemyPrefabs[i], numberOfEnemiesToSpawn));
+            EnemyObjectPools.Add(i, ObjectPool.CreateInstance(Enemies[i].prefab, numberOfEnemiesToSpawn));
         }
     }
 
@@ -56,14 +56,14 @@ public class EnemySpawner : MonoBehaviour
     
     private void SpawnRoundRobinEnemy(int SpawnedEnemies)
     {
-        int SpawnIndex = SpawnedEnemies % EnemyPrefabs.Count;
+        int SpawnIndex = SpawnedEnemies % Enemies.Count;
 
         DoSpawnEnemy(SpawnIndex);
     }
     
     private void SpawnRandomEnemy()
     {
-        DoSpawnEnemy(Random.Range(0, EnemyPrefabs.Count));
+        DoSpawnEnemy(Random.Range(0, Enemies.Count));
     }
 
     private void DoSpawnEnemy(int SpawnIndex)
@@ -73,6 +73,7 @@ public class EnemySpawner : MonoBehaviour
         if (poolableObject != null)
         {
             Enemy enemy = poolableObject.GetComponent<Enemy>();
+            Enemies[SpawnIndex].SetupEnemy(enemy);
             
             int VertexIndex = Random.Range(0, _triangulation.vertices.Length);
             NavMeshHit hit;
@@ -82,6 +83,7 @@ public class EnemySpawner : MonoBehaviour
                 enemy.agent.Warp(hit.position);
                 enemy.movement.Target = player;
                 enemy.agent.enabled = true;
+                //enemy.movement.Triangulation = _triangulation;
                 enemy.movement.StartChasing();
             }
             else

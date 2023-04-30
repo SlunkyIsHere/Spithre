@@ -45,7 +45,7 @@ public class Bullet : MonoBehaviour
         Collider[] enemies = Physics.OverlapSphere(transform.position, explosionRange, whatIsEnemies);
         for (int i = 0; i < enemies.Length; i++)
         {
-            enemies[i].GetComponent<EnemyAI>().TakeDamage(explosionDamage);
+            enemies[i].GetComponent<Enemy>().TakeDamage(explosionDamage);
 
             if (enemies[i].GetComponent<Rigidbody>())
             {

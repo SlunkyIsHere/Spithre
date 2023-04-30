@@ -7,21 +7,21 @@ using UnityEngine;
 public class AttackRadius : MonoBehaviour
 {
     public SphereCollider Collider;
-    private List<IDamagable> Damagables = new List<IDamagable>();
+    protected List<IDamagable> Damagables = new List<IDamagable>();
     public int Damage = 10;
-    public float AttackDelay = 0.5f;
+    public float AttackDelay;
     public delegate void AttackEvent(IDamagable Target);
     public AttackEvent OnAttack;
-    private Coroutine _attackCoroutine;
+    protected Coroutine _attackCoroutine;
     public EnemyMovement movement;
 
-    private void Awake()
+    protected virtual void Awake()
     {
         Collider = GetComponent<SphereCollider>();
-        Collider.isTrigger = true;
+        //Collider.isTrigger = true;
     }
     
-    private void OnTriggerEnter(Collider other)
+    protected virtual void OnTriggerEnter(Collider other)
     {
         IDamagable damagable = other.GetComponent<IDamagable>();
         if (damagable != null)
@@ -37,7 +37,7 @@ public class AttackRadius : MonoBehaviour
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    protected virtual void OnTriggerExit(Collider other)
     {
         IDamagable damagable = other.GetComponent<IDamagable>();
         if (damagable != null)
@@ -52,7 +52,7 @@ public class AttackRadius : MonoBehaviour
         }
     }
     
-    private IEnumerator Attack()
+    protected virtual IEnumerator Attack()
     {
         WaitForSeconds wait = new WaitForSeconds(AttackDelay);
         
@@ -77,6 +77,7 @@ public class AttackRadius : MonoBehaviour
             if (closestDamagable != null)
             {
                 OnAttack?.Invoke(closestDamagable);
+                yield return wait;
                 closestDamagable.TakeDamage(Damage);
             }
 
@@ -91,8 +92,8 @@ public class AttackRadius : MonoBehaviour
         _attackCoroutine = null;
     }
     
-    private bool DisabledDamagaables(IDamagable damagable)
+    protected bool DisabledDamagaables(IDamagable damagable)
     {
-        return damagable != null && !damagable.GetTransform().gameObject.activeInHierarchy;
+        return damagable != null && !damagable.GetTransform().gameObject.activeSelf;
     }
 }

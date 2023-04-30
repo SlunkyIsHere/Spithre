@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb71c7c83c076a648b8b79524dd6c73d, type: 3}
+  m_Name: BasicZombie
+  m_EditorClassIdentifier: 
+  prefab: {fileID: -5956378435045141869, guid: 44f188f3fef1bcb46a3b1c89f21dab2e, type: 3}
+  Health: 100
+  AttackConfiguration: {fileID: 11400000, guid: dde5db371706385469101bf08b6b54c6,
+    type: 2}
+  AIUpdateInterval: 0.1
+  Acceleration: 8
+  AngularSpeed: 120
+  AreaMask: -1
+  AvoidancePriority: 50
+  BaseOffset: 0
+  Height: 2
+  ObstacleAvoidanceType: 1
+  Radius: 0.3
+  Speed: 3.5
+  StoppingDistance: 0.5
